@@ -1,0 +1,31 @@
+{
+  "mould_geometry": {
+    "mould_center_x_mm": 0.0,
+    "mould_diameter_mm": 150.0,
+    "mould_height_mm": 120.0,
+    "mould_top_z_mm": 200.0,
+    "neck_height_mm": 20.0
+  },
+  "project_name": "IS_Machine_BlankSide_Example",
+  "robot_parameters": {
+    "coating_target_relative": 1.0,
+    "lance_length_mm": 250,
+    "max_robot_speed_mm_s": 500.0,
+    "min_robot_speed_mm_s": 50.0,
+    "minimum_clearance_mm": 10.0,
+    "nominal_speed_mm_s": 200.0,
+    "nozzle_offset_mm": 0.0,
+    "spray_cone_angle_deg": 30.0,
+    "target_spray_distance_mm": 50.0,
+    "valve_delay_ms": 50.0
+  },
+  "swabbing_parameters": {
+    "approach_height_mm": 50.0,
+    "coating_end_z_mm": 80.0,
+    "coating_start_z_mm": 200.0,
+    "entry_offset_x_mm": 0.0,
+    "include_swab_up": false,
+    "reference_diameter_mm": 150.0,
+    "swab_step_mm": 10.0
+  }
+}

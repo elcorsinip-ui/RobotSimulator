@@ -1,0 +1,41 @@
+# LICENSE
+
+## Proprietary Software — Bottero Group S.p.A.
+
+**Copyright © 2026 Bottero Group S.p.A. All rights reserved.**
+
+This software and associated documentation files (the "Software") are proprietary to
+Bottero Group S.p.A. and may only be used in accordance with the terms of a valid
+license agreement between the user and Bottero Group S.p.A.
+
+### Authorized Use
+
+This Software is provided exclusively to authorized Bottero customers, employees,
+and partners for the specific purpose of configuring and calculating FANUC robot
+swabbing trajectories on IS hollow glass forming machines.
+
+### Restrictions
+
+- This Software may NOT be copied, modified, distributed, or sublicensed without
+  explicit written permission from Bottero Group S.p.A.
+- This Software may NOT be used for commercial purposes outside the scope of the
+  license agreement.
+- This Software may NOT be reverse-engineered, decompiled, or disassembled.
+
+### Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+### Safety Notice
+
+This Software is an engineering support tool and is NOT a certified safety system.
+Users must comply with all applicable safety regulations, including but not limited
+to ISO 12100, ISO 10218, and local machine safety standards.
+
+---
+
+For licensing inquiries, contact: **Bottero Group S.p.A.**

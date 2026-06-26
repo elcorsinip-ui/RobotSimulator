@@ -1,0 +1,23 @@
+point_id,x_mm,z_mm,speed_mm_s,valve_state,segment_type,collision_status,clearance_margin_mm,note
+0,224.00,470.00,200.00,OFF,wait,clear,50.36,Wait position — safe height above obstacles
+1,224.00,420.00,200.00,OFF,approach,warning,6.00,Approach step 1/5
+2,224.00,370.00,200.00,OFF,approach,warning,6.00,Approach step 2/5
+3,224.00,320.00,200.00,OFF,approach,warning,6.00,Approach step 3/5
+4,224.00,270.00,200.00,OFF,approach,warning,6.00,Approach step 4/5
+5,224.00,220.00,200.00,OFF,approach,warning,6.00,Approach step 5/5
+6,224.00,200.00,200.00,OFF,enter,warning,6.00,Entry — top of mould cavity
+7,224.00,200.00,200.00,ON,swab_down,warning,6.00,Swab down Z=200.0 | Advance: 10.0mm
+8,224.00,190.00,200.00,ON,swab_down,warning,6.00,Swab down Z=190.0
+9,224.00,180.00,200.00,ON,swab_down,warning,6.00,Swab down Z=180.0
+10,224.00,170.00,200.00,ON,swab_down,warning,6.00,Swab down Z=170.0
+11,224.00,160.00,200.00,ON,swab_down,warning,6.00,Swab down Z=160.0
+12,224.00,150.00,200.00,ON,swab_down,warning,6.00,Swab down Z=150.0
+13,224.00,140.00,200.00,ON,swab_down,warning,6.00,Swab down Z=140.0
+14,224.00,130.00,200.00,ON,swab_down,warning,6.00,Swab down Z=130.0
+15,224.00,120.00,200.00,ON,swab_down,warning,6.00,Swab down Z=120.0
+16,224.00,110.00,200.00,ON,swab_down,warning,6.00,Swab down Z=110.0
+17,224.00,100.00,200.00,ON,swab_down,warning,6.00,Swab down Z=100.0
+18,224.00,90.00,200.00,ON,swab_down,warning,6.00,Swab down Z=90.0
+19,224.00,80.00,200.00,ON,swab_down,warning,6.00,Swab down — bottom Z=80.0
+20,224.00,215.00,200.00,OFF,exit,warning,6.00,Exit — above mould top with clearance
+21,224.00,470.00,200.00,OFF,exit,clear,50.36,Return to wait position

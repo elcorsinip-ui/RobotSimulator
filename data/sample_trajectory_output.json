@@ -1,0 +1,359 @@
+{
+  "project_name": "IS_Machine_BlankSide_Example",
+  "export_timestamp": "2026-06-26T11:01:09.542560",
+  "mould_geometry": {
+    "mould_diameter_mm": 150.0,
+    "mould_height_mm": 120.0,
+    "neck_height_mm": 20.0,
+    "mould_top_z_mm": 200.0,
+    "mould_center_x_mm": 0.0
+  },
+  "obstacles": [
+    {
+      "name": "Upper Wire / Mould Edge",
+      "type": "mould_upper_edge",
+      "x_min_mm": -75.0,
+      "x_max_mm": 75.0,
+      "z_min_mm": 195.0,
+      "z_max_mm": 205.0,
+      "clearance_mm": 5.0
+    },
+    {
+      "name": "Deflector Left Side",
+      "type": "deflector",
+      "x_min_mm": -200.0,
+      "x_max_mm": -85.0,
+      "z_min_mm": 210.0,
+      "z_max_mm": 240.0,
+      "clearance_mm": 8.0
+    },
+    {
+      "name": "Deflector Right Side",
+      "type": "deflector",
+      "x_min_mm": 85.0,
+      "x_max_mm": 200.0,
+      "z_min_mm": 210.0,
+      "z_max_mm": 240.0,
+      "clearance_mm": 8.0
+    },
+    {
+      "name": "Baffle Mechanism",
+      "type": "baffle_mechanism",
+      "x_min_mm": -200.0,
+      "x_max_mm": -90.0,
+      "z_min_mm": 150.0,
+      "z_max_mm": 270.0,
+      "clearance_mm": 5.0
+    },
+    {
+      "name": "Funnel Mechanism",
+      "type": "funnel_mechanism",
+      "x_min_mm": 90.0,
+      "x_max_mm": 200.0,
+      "z_min_mm": 150.0,
+      "z_max_mm": 270.0,
+      "clearance_mm": 5.0
+    },
+    {
+      "name": "Machine Frame Left",
+      "type": "machine_frame",
+      "x_min_mm": -300.0,
+      "x_max_mm": -250.0,
+      "z_min_mm": 0.0,
+      "z_max_mm": 400.0,
+      "clearance_mm": 10.0
+    },
+    {
+      "name": "Machine Frame Right",
+      "type": "machine_frame",
+      "x_min_mm": 250.0,
+      "x_max_mm": 300.0,
+      "z_min_mm": 0.0,
+      "z_max_mm": 400.0,
+      "clearance_mm": 10.0
+    }
+  ],
+  "robot_parameters": {
+    "lance_length_mm": 250,
+    "nozzle_offset_mm": 0.0,
+    "spray_cone_angle_deg": 30.0,
+    "target_spray_distance_mm": 50.0,
+    "minimum_clearance_mm": 10.0,
+    "nominal_speed_mm_s": 200.0,
+    "min_robot_speed_mm_s": 50.0,
+    "max_robot_speed_mm_s": 500.0,
+    "valve_delay_ms": 50.0,
+    "coating_target_relative": 1.0
+  },
+  "trajectory": {
+    "feasible": true,
+    "total_points": 22,
+    "min_clearance_margin_mm": "6.00",
+    "collision_warnings": [
+      "Point 1 (224.0, 420.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 2 (224.0, 370.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 3 (224.0, 320.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 4 (224.0, 270.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 5 (224.0, 220.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 6 (224.0, 200.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 7 (224.0, 200.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 8 (224.0, 190.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 9 (224.0, 180.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 10 (224.0, 170.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 11 (224.0, 160.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 12 (224.0, 150.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 13 (224.0, 140.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 14 (224.0, 130.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 15 (224.0, 120.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 16 (224.0, 110.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 17 (224.0, 100.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 18 (224.0, 90.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 19 (224.0, 80.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)",
+      "Point 20 (224.0, 215.0) WARNING \u2014 close to obstacle (margin: 6.0 mm)"
+    ],
+    "points": [
+      {
+        "point_id": 0,
+        "x_mm": 224.0,
+        "z_mm": 470.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "OFF",
+        "segment_type": "wait",
+        "collision_status": "clear",
+        "clearance_margin_mm": 50.36,
+        "note": "Wait position \u2014 safe height above obstacles"
+      },
+      {
+        "point_id": 1,
+        "x_mm": 224.0,
+        "z_mm": 420.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "OFF",
+        "segment_type": "approach",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Approach step 1/5"
+      },
+      {
+        "point_id": 2,
+        "x_mm": 224.0,
+        "z_mm": 370.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "OFF",
+        "segment_type": "approach",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Approach step 2/5"
+      },
+      {
+        "point_id": 3,
+        "x_mm": 224.0,
+        "z_mm": 320.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "OFF",
+        "segment_type": "approach",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Approach step 3/5"
+      },
+      {
+        "point_id": 4,
+        "x_mm": 224.0,
+        "z_mm": 270.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "OFF",
+        "segment_type": "approach",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Approach step 4/5"
+      },
+      {
+        "point_id": 5,
+        "x_mm": 224.0,
+        "z_mm": 220.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "OFF",
+        "segment_type": "approach",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Approach step 5/5"
+      },
+      {
+        "point_id": 6,
+        "x_mm": 224.0,
+        "z_mm": 200.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "OFF",
+        "segment_type": "enter",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Entry \u2014 top of mould cavity"
+      },
+      {
+        "point_id": 7,
+        "x_mm": 224.0,
+        "z_mm": 200.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "ON",
+        "segment_type": "swab_down",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Swab down Z=200.0 | Advance: 10.0mm"
+      },
+      {
+        "point_id": 8,
+        "x_mm": 224.0,
+        "z_mm": 190.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "ON",
+        "segment_type": "swab_down",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Swab down Z=190.0"
+      },
+      {
+        "point_id": 9,
+        "x_mm": 224.0,
+        "z_mm": 180.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "ON",
+        "segment_type": "swab_down",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Swab down Z=180.0"
+      },
+      {
+        "point_id": 10,
+        "x_mm": 224.0,
+        "z_mm": 170.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "ON",
+        "segment_type": "swab_down",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Swab down Z=170.0"
+      },
+      {
+        "point_id": 11,
+        "x_mm": 224.0,
+        "z_mm": 160.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "ON",
+        "segment_type": "swab_down",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Swab down Z=160.0"
+      },
+      {
+        "point_id": 12,
+        "x_mm": 224.0,
+        "z_mm": 150.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "ON",
+        "segment_type": "swab_down",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Swab down Z=150.0"
+      },
+      {
+        "point_id": 13,
+        "x_mm": 224.0,
+        "z_mm": 140.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "ON",
+        "segment_type": "swab_down",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Swab down Z=140.0"
+      },
+      {
+        "point_id": 14,
+        "x_mm": 224.0,
+        "z_mm": 130.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "ON",
+        "segment_type": "swab_down",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Swab down Z=130.0"
+      },
+      {
+        "point_id": 15,
+        "x_mm": 224.0,
+        "z_mm": 120.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "ON",
+        "segment_type": "swab_down",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Swab down Z=120.0"
+      },
+      {
+        "point_id": 16,
+        "x_mm": 224.0,
+        "z_mm": 110.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "ON",
+        "segment_type": "swab_down",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Swab down Z=110.0"
+      },
+      {
+        "point_id": 17,
+        "x_mm": 224.0,
+        "z_mm": 100.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "ON",
+        "segment_type": "swab_down",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Swab down Z=100.0"
+      },
+      {
+        "point_id": 18,
+        "x_mm": 224.0,
+        "z_mm": 90.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "ON",
+        "segment_type": "swab_down",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Swab down Z=90.0"
+      },
+      {
+        "point_id": 19,
+        "x_mm": 224.0,
+        "z_mm": 80.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "ON",
+        "segment_type": "swab_down",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Swab down \u2014 bottom Z=80.0"
+      },
+      {
+        "point_id": 20,
+        "x_mm": 224.0,
+        "z_mm": 215.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "OFF",
+        "segment_type": "exit",
+        "collision_status": "warning",
+        "clearance_margin_mm": 6.0,
+        "note": "Exit \u2014 above mould top with clearance"
+      },
+      {
+        "point_id": 21,
+        "x_mm": 224.0,
+        "z_mm": 470.0,
+        "speed_mm_s": 200.0,
+        "valve_state": "OFF",
+        "segment_type": "exit",
+        "collision_status": "clear",
+        "clearance_margin_mm": 50.36,
+        "note": "Return to wait position"
+      }
+    ]
+  }
+}

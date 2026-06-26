@@ -1,0 +1,67 @@
+{
+  "obstacles": [
+    {
+      "clearance_mm": 5.0,
+      "name": "Upper Wire / Mould Edge",
+      "obstacle_type": "mould_upper_edge",
+      "x_max_mm": 75.0,
+      "x_min_mm": -75.0,
+      "z_max_mm": 205.0,
+      "z_min_mm": 195.0
+    },
+    {
+      "clearance_mm": 8.0,
+      "name": "Deflector Left Side",
+      "obstacle_type": "deflector",
+      "x_max_mm": -85.0,
+      "x_min_mm": -200.0,
+      "z_max_mm": 240.0,
+      "z_min_mm": 210.0
+    },
+    {
+      "clearance_mm": 8.0,
+      "name": "Deflector Right Side",
+      "obstacle_type": "deflector",
+      "x_max_mm": 200.0,
+      "x_min_mm": 85.0,
+      "z_max_mm": 240.0,
+      "z_min_mm": 210.0
+    },
+    {
+      "clearance_mm": 5.0,
+      "name": "Baffle Mechanism",
+      "obstacle_type": "baffle_mechanism",
+      "x_max_mm": -90.0,
+      "x_min_mm": -200.0,
+      "z_max_mm": 270.0,
+      "z_min_mm": 150.0
+    },
+    {
+      "clearance_mm": 5.0,
+      "name": "Funnel Mechanism",
+      "obstacle_type": "funnel_mechanism",
+      "x_max_mm": 200.0,
+      "x_min_mm": 90.0,
+      "z_max_mm": 270.0,
+      "z_min_mm": 150.0
+    },
+    {
+      "clearance_mm": 10.0,
+      "name": "Machine Frame Left",
+      "obstacle_type": "machine_frame",
+      "x_max_mm": -250.0,
+      "x_min_mm": -300.0,
+      "z_max_mm": 400.0,
+      "z_min_mm": 0.0
+    },
+    {
+      "clearance_mm": 10.0,
+      "name": "Machine Frame Right",
+      "obstacle_type": "machine_frame",
+      "x_max_mm": 300.0,
+      "x_min_mm": 250.0,
+      "z_max_mm": 400.0,
+      "z_min_mm": 0.0
+    }
+  ]
+}
