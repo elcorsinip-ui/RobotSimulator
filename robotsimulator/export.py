@@ -1,7 +1,8 @@
 """
-RobotSimulator — Export System
+RobotSimulator — Export System (3D)
 
 Exports trajectory results to CSV, JSON, and Markdown engineering report.
+Updated for 3D coordinates (X, Y, Z).
 """
 
 from __future__ import annotations
@@ -49,6 +50,7 @@ def export_csv(
         writer.writerow([
             "point_id",
             "x_mm",
+            "y_mm",
             "z_mm",
             "speed_mm_s",
             "valve_state",
@@ -62,6 +64,7 @@ def export_csv(
             writer.writerow([
                 p.point_id,
                 f"{p.x_mm:.2f}",
+                f"{p.y_mm:.2f}",
                 f"{p.z_mm:.2f}",
                 f"{p.speed_mm_s:.2f}",
                 p.valve_state.value,
@@ -106,6 +109,8 @@ def export_json(
             "neck_height_mm": config.mould.neck_height_mm,
             "mould_top_z_mm": config.mould.mould_top_z_mm,
             "mould_center_x_mm": config.mould.mould_center_x_mm,
+            "mould_center_y_mm": config.mould.mould_center_y_mm,
+            "mould_depth_mm": config.mould.mould_depth_mm,
         },
         "obstacles": [
             {
@@ -113,6 +118,8 @@ def export_json(
                 "type": obs.obstacle_type.value,
                 "x_min_mm": obs.x_min_mm,
                 "x_max_mm": obs.x_max_mm,
+                "y_min_mm": obs.y_min_mm,
+                "y_max_mm": obs.y_max_mm,
                 "z_min_mm": obs.z_min_mm,
                 "z_max_mm": obs.z_max_mm,
                 "clearance_mm": obs.clearance_mm,
@@ -131,6 +138,19 @@ def export_json(
             "valve_delay_ms": config.robot_params.valve_delay_ms,
             "coating_target_relative": config.robot_params.coating_target_relative,
         },
+        "swabbing_parameters": {
+            "reference_diameter_mm": config.swabbing_params.reference_diameter_mm,
+            "coating_start_z_mm": config.swabbing_params.coating_start_z_mm,
+            "coating_end_z_mm": config.swabbing_params.coating_end_z_mm,
+            "swab_step_mm": config.swabbing_params.swab_step_mm,
+            "include_swab_up": config.swabbing_params.include_swab_up,
+            "entry_offset_x_mm": config.swabbing_params.entry_offset_x_mm,
+            "approach_height_mm": config.swabbing_params.approach_height_mm,
+            "swab_center_y_mm": config.swabbing_params.swab_center_y_mm,
+            "include_y_sweep": config.swabbing_params.include_y_sweep,
+            "swab_y_range_mm": config.swabbing_params.swab_y_range_mm,
+            "swab_y_step_mm": config.swabbing_params.swab_y_step_mm,
+        },
         "trajectory": {
             "feasible": result.feasible,
             "total_points": result.total_points,
@@ -143,6 +163,7 @@ def export_json(
                 {
                     "point_id": p.point_id,
                     "x_mm": round(p.x_mm, 2),
+                    "y_mm": round(p.y_mm, 2),
                     "z_mm": round(p.z_mm, 2),
                     "speed_mm_s": round(p.speed_mm_s, 2),
                     "valve_state": p.valve_state.value,
@@ -204,7 +225,7 @@ def generate_report(
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
     lines = []
-    lines.append(f"# RobotSwabbing Engineering Report")
+    lines.append(f"# RobotSwabbing Engineering Report (3D)")
     lines.append(f"")
     lines.append(f"**Project:** {config.project_name}")
     lines.append(f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -216,7 +237,7 @@ def generate_report(
     lines.append("")
 
     # Mould geometry
-    lines.append("## Mould Geometry")
+    lines.append("## Mould Geometry (3D)")
     lines.append("")
     lines.append("| Parameter | Value |")
     lines.append("|-----------|-------|")
@@ -225,19 +246,23 @@ def generate_report(
     lines.append(f"| Neck Height | {config.mould.neck_height_mm:.1f} mm |")
     lines.append(f"| Mould Top Z | {config.mould.mould_top_z_mm:.1f} mm |")
     lines.append(f"| Mould Center X | {config.mould.mould_center_x_mm:.1f} mm |")
+    lines.append(f"| Mould Center Y | {config.mould.mould_center_y_mm:.1f} mm |")
+    if config.mould.mould_depth_mm > 0:
+        lines.append(f"| Mould Depth (Y) | {config.mould.mould_depth_mm:.1f} mm |")
     lines.append(f"| Mould Bottom Z | {config.mould.mould_bottom_z_mm:.1f} mm |")
     lines.append("")
 
     # Obstacles
-    lines.append("## Obstacles")
+    lines.append("## Obstacles (3D)")
     lines.append("")
     if config.obstacles:
-        lines.append("| Name | Type | X min | X max | Z min | Z max | Clearance |")
-        lines.append("|------|------|-------|-------|-------|-------|-----------|")
+        lines.append("| Name | Type | X min | X max | Y min | Y max | Z min | Z max | Clearance |")
+        lines.append("|------|------|-------|-------|-------|-------|-------|-------|-----------|")
         for obs in config.obstacles:
             lines.append(
                 f"| {obs.name} | {obs.obstacle_type.value} | "
                 f"{obs.x_min_mm:.1f} | {obs.x_max_mm:.1f} | "
+                f"{obs.y_min_mm:.1f} | {obs.y_max_mm:.1f} | "
                 f"{obs.z_min_mm:.1f} | {obs.z_max_mm:.1f} | "
                 f"{obs.clearance_mm:.1f} mm |"
             )
@@ -262,19 +287,31 @@ def generate_report(
     lines.append(f"| Coating Target | {config.robot_params.coating_target_relative:.2f} |")
     lines.append("")
 
+    # 3D Swabbing parameters
+    lines.append("## 3D Swabbing Parameters")
+    lines.append("")
+    lines.append("| Parameter | Value |")
+    lines.append("|-----------|-------|")
+    lines.append(f"| Swab Center Y | {config.swabbing_params.swab_center_y_mm:.1f} mm |")
+    lines.append(f"| Include Y Sweep | {'Yes' if config.swabbing_params.include_y_sweep else 'No'} |")
+    if config.swabbing_params.include_y_sweep:
+        lines.append(f"| Y Sweep Range | {config.swabbing_params.swab_y_range_mm:.1f} mm |")
+        lines.append(f"| Y Step | {config.swabbing_params.swab_y_step_mm:.1f} mm |")
+    lines.append("")
+
     # Trajectory
-    lines.append("## Calculated Trajectory")
+    lines.append("## Calculated Trajectory (3D)")
     lines.append("")
     lines.append(f"Total points: {result.total_points}")
     lines.append(f"Min clearance margin: {_fmt_margin(result.min_clearance_margin_mm)}")
     lines.append("")
 
-    lines.append("| ID | X [mm] | Z [mm] | Speed [mm/s] | Valve | Segment | Collision | Margin [mm] | Note |")
-    lines.append("|----|--------|--------|-------------|-------|---------|----------|-------------|------|")
+    lines.append("| ID | X [mm] | Y [mm] | Z [mm] | Speed [mm/s] | Valve | Segment | Collision | Margin [mm] | Note |")
+    lines.append("|----|--------|--------|--------|-------------|-------|---------|----------|-------------|------|")
     for p in result.points:
         margin_str = _fmt_margin(p.clearance_margin_mm)
         lines.append(
-            f"| {p.point_id} | {p.x_mm:.1f} | {p.z_mm:.1f} | "
+            f"| {p.point_id} | {p.x_mm:.1f} | {p.y_mm:.1f} | {p.z_mm:.1f} | "
             f"{p.speed_mm_s:.1f} | {p.valve_state.value} | "
             f"{p.segment_type.value} | {p.collision_status.value} | "
             f"{margin_str} | {p.note} |"

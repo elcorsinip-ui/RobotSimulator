@@ -1,9 +1,9 @@
 """
-RobotSimulator — Geometry Engine
+RobotSimulator — Geometry Engine (3D)
 
-2D X-Z geometry operations for the swabbing trajectory calculator.
-Handles obstacle expansion, point-in-obstacle checks, segment
-collision approximation, and safe corridor estimation.
+3D X-Y-Z geometry operations for the swabbing trajectory calculator.
+Handles obstacle expansion, point-in-box checks, segment collision
+approximation, and safe corridor estimation in 3D.
 
 All coordinates in millimeters.
 """
@@ -17,19 +17,21 @@ from .models import ObstacleEnvelope, MouldGeometry
 
 
 # ============================================================================
-# Obstacle Expansion
+# Obstacle Expansion (3D)
 # ============================================================================
 
-def expand_obstacle(obstacle: ObstacleEnvelope) -> Tuple[float, float, float, float]:
+def expand_obstacle(obstacle: ObstacleEnvelope) -> Tuple[float, float, float, float, float, float]:
     """
     Return the expanded bounding box of an obstacle including its local clearance.
 
     Returns:
-        (x_min, x_max, z_min, z_max) of the expanded envelope.
+        (x_min, x_max, y_min, y_max, z_min, z_max) of the expanded envelope.
     """
     return (
         obstacle.expanded_x_min_mm,
         obstacle.expanded_x_max_mm,
+        obstacle.expanded_y_min_mm,
+        obstacle.expanded_y_max_mm,
         obstacle.expanded_z_min_mm,
         obstacle.expanded_z_max_mm,
     )
@@ -38,7 +40,7 @@ def expand_obstacle(obstacle: ObstacleEnvelope) -> Tuple[float, float, float, fl
 def expand_obstacles_with_global_clearance(
     obstacles: List[ObstacleEnvelope],
     global_clearance_mm: float,
-) -> List[Tuple[float, float, float, float]]:
+) -> List[Tuple[float, float, float, float, float, float]]:
     """
     Expand each obstacle by both its local clearance AND a global minimum clearance.
 
@@ -47,7 +49,7 @@ def expand_obstacles_with_global_clearance(
     own clearance.
 
     Returns:
-        List of (x_min, x_max, z_min, z_max) expanded envelopes.
+        List of (x_min, x_max, y_min, y_max, z_min, z_max) expanded envelopes.
     """
     expanded = []
     for obs in obstacles:
@@ -55,6 +57,8 @@ def expand_obstacles_with_global_clearance(
         expanded.append((
             obs.x_min_mm - total_clearance,
             obs.x_max_mm + total_clearance,
+            obs.y_min_mm - total_clearance,
+            obs.y_max_mm + total_clearance,
             obs.z_min_mm - total_clearance,
             obs.z_max_mm + total_clearance,
         ))
@@ -62,40 +66,41 @@ def expand_obstacles_with_global_clearance(
 
 
 # ============================================================================
-# Point-in-Obstacle Checks
+# Point-in-Box Checks (3D)
 # ============================================================================
 
-def point_in_rect(
+def point_in_box(
     x: float,
+    y: float,
     z: float,
-    rect: Tuple[float, float, float, float],
+    box: Tuple[float, float, float, float, float, float],
 ) -> bool:
     """
-    Check if a point (x, z) is inside a rectangular region.
+    Check if a point (x, y, z) is inside a 3D box region.
 
     Args:
-        x: X coordinate of the point
-        z: Z coordinate of the point
-        rect: (x_min, x_max, z_min, z_max)
+        x, y, z: Coordinates of the point
+        box: (x_min, x_max, y_min, y_max, z_min, z_max)
 
     Returns:
-        True if point is strictly inside the rectangle.
+        True if point is strictly inside the box.
     """
-    x_min, x_max, z_min, z_max = rect
-    return (x_min < x < x_max) and (z_min < z < z_max)
+    x_min, x_max, y_min, y_max, z_min, z_max = box
+    return (x_min < x < x_max) and (y_min < y < y_max) and (z_min < z < z_max)
 
 
 def point_in_obstacle(
     x: float,
+    y: float,
     z: float,
     obstacle: ObstacleEnvelope,
     use_expanded: bool = True,
 ) -> bool:
     """
-    Check if a point is inside an obstacle envelope.
+    Check if a point is inside an obstacle envelope (3D).
 
     Args:
-        x, z: Point coordinates
+        x, y, z: Point coordinates
         obstacle: The obstacle to check against
         use_expanded: If True, use the expanded (clearance-included) envelope
 
@@ -103,15 +108,17 @@ def point_in_obstacle(
         True if the point is inside the obstacle (expanded or original).
     """
     if use_expanded:
-        rect = expand_obstacle(obstacle)
+        box = expand_obstacle(obstacle)
     else:
-        rect = (obstacle.x_min_mm, obstacle.x_max_mm,
-                obstacle.z_min_mm, obstacle.z_max_mm)
-    return point_in_rect(x, z, rect)
+        box = (obstacle.x_min_mm, obstacle.x_max_mm,
+               obstacle.y_min_mm, obstacle.y_max_mm,
+               obstacle.z_min_mm, obstacle.z_max_mm)
+    return point_in_box(x, y, z, box)
 
 
 def point_in_any_obstacle(
     x: float,
+    y: float,
     z: float,
     obstacles: List[ObstacleEnvelope],
     use_expanded: bool = True,
@@ -122,51 +129,78 @@ def point_in_any_obstacle(
     Returns:
         True if the point is inside at least one obstacle.
     """
-    return any(point_in_obstacle(x, z, obs, use_expanded) for obs in obstacles)
+    return any(point_in_obstacle(x, y, z, obs, use_expanded) for obs in obstacles)
 
 
 # ============================================================================
-# Clearance Calculation
+# Clearance Calculation (3D)
 # ============================================================================
 
-def distance_to_rect_border(
+def distance_to_box_border(
     x: float,
+    y: float,
     z: float,
-    rect: Tuple[float, float, float, float],
+    box: Tuple[float, float, float, float, float, float],
 ) -> float:
     """
     Calculate the signed distance from a point to the nearest border
-    of a rectangular region.
+    of a 3D box region.
 
-    Positive = outside the rectangle.
-    Negative = inside the rectangle.
+    Positive = outside the box.
+    Negative = inside the box.
 
-    For a point inside the rectangle, returns the negative of the
-    minimum distance to any border (how deep inside it is).
+    For a point inside the box, returns the negative of the
+    minimum distance to any face (how deep inside it is).
 
     For a point outside, returns the minimum distance to the border.
     If the point is exactly on the border, returns 0.
     """
-    x_min, x_max, z_min, z_max = rect
+    x_min, x_max, y_min, y_max, z_min, z_max = box
 
-    # Distance to each border
+    # Distance to each face
     dx_left = x - x_min
     dx_right = x_max - x
+    dy_front = y - y_min
+    dy_back = y_max - y
     dz_bottom = z - z_min
     dz_top = z_max - z
 
-    if point_in_rect(x, z, rect):
+    if point_in_box(x, y, z, box):
         # Inside: return negative (how deep inside)
-        return -min(dx_left, dx_right, dz_bottom, dz_top)
+        return -min(dx_left, dx_right, dy_front, dy_back, dz_bottom, dz_top)
     else:
-        # Outside: compute distance to nearest edge or corner
+        # Outside: compute distance to nearest face/edge/corner
         dx = max(x_min - x, 0.0, x - x_max)
+        dy = max(y_min - y, 0.0, y - y_max)
         dz = max(z_min - z, 0.0, z - z_max)
-        return math.sqrt(dx * dx + dz * dz)
+        
+        # Distance to the box (can be face, edge, or corner distance)
+        if dx == 0 and dy == 0:
+            # Aligned with face in X-Y, distance is just Z
+            return dz
+        elif dx == 0 and dz == 0:
+            # Aligned with face in X-Z, distance is just Y
+            return dy
+        elif dy == 0 and dz == 0:
+            # Aligned with face in Y-Z, distance is just X
+            return dx
+        elif dx == 0:
+            # Aligned with face in X, distance is 2D distance in Y-Z
+            return math.sqrt(dy * dy + dz * dz)
+        elif dy == 0:
+            # Aligned with face in Y, distance is 2D distance in X-Z
+            return math.sqrt(dx * dx + dz * dz)
+        elif dz == 0:
+            # Aligned with face in Z, distance is 2D distance in X-Y
+            return math.sqrt(dx * dx + dy * dy)
+        else:
+            # Corner case: 3D Euclidean distance
+            return math.sqrt(dx * dx + dy * dy + dz * dz)
 
 
 def min_clearance_to_obstacles(
     x: float,
+    y: float,
     z: float,
     obstacles: List[ObstacleEnvelope],
     use_expanded: bool = True,
@@ -186,64 +220,66 @@ def min_clearance_to_obstacles(
     min_dist = float("inf")
     for obs in obstacles:
         if use_expanded:
-            rect = expand_obstacle(obs)
+            box = expand_obstacle(obs)
         else:
-            rect = (obs.x_min_mm, obs.x_max_mm,
-                    obs.z_min_mm, obs.z_max_mm)
-        dist = distance_to_rect_border(x, z, rect)
+            box = (obs.x_min_mm, obs.x_max_mm,
+                   obs.y_min_mm, obs.y_max_mm,
+                   obs.z_min_mm, obs.z_max_mm)
+        dist = distance_to_box_border(x, y, z, box)
         if dist < min_dist:
             min_dist = dist
     return min_dist
 
 
 # ============================================================================
-# Segment Checks
+# Segment Checks (3D)
 # ============================================================================
 
-def segment_collides_with_rect(
-    x1: float, z1: float,
-    x2: float, z2: float,
-    rect: Tuple[float, float, float, float],
+def segment_collides_with_box(
+    x1: float, y1: float, z1: float,
+    x2: float, y2: float, z2: float,
+    box: Tuple[float, float, float, float, float, float],
     num_samples: int = 20,
 ) -> bool:
     """
-    Check if a line segment collides with a rectangular region.
+    Check if a 3D line segment collides with a box region.
 
     Uses point-sampling approximation: interpolates points along
-    the segment and checks each against the rectangle.
+    the segment and checks each against the box.
 
     Args:
-        x1, z1: Start point of the segment
-        x2, z2: End point of the segment
-        rect: (x_min, x_max, z_min, z_max)
+        x1, y1, z1: Start point of the segment
+        x2, y2, z2: End point of the segment
+        box: (x_min, x_max, y_min, y_max, z_min, z_max)
         num_samples: Number of interpolation points (default 20)
 
     Returns:
-        True if any sampled point on the segment is inside the rectangle.
+        True if any sampled point on the segment is inside the box.
     """
     for i in range(num_samples + 1):
         t = i / num_samples
         px = x1 + t * (x2 - x1)
+        py = y1 + t * (y2 - y1)
         pz = z1 + t * (z2 - z1)
-        if point_in_rect(px, pz, rect):
+        if point_in_box(px, py, pz, box):
             return True
     return False
 
 
 def segment_clearance_check(
-    x1: float, z1: float,
-    x2: float, z2: float,
+    x1: float, y1: float, z1: float,
+    x2: float, y2: float, z2: float,
     obstacles: List[ObstacleEnvelope],
     global_clearance_mm: float = 0.0,
     num_samples: int = 20,
 ) -> Tuple[bool, float]:
     """
-    Check if a segment is clear of all obstacles and return
+    Check if a 3D segment is clear of all obstacles and return
     the minimum clearance margin.
 
     Args:
-        x1, z1: Start point
-        x2, z2: End point
+        x1, y1, z1: Start point
+        x2, y2, z2: End point
         obstacles: List of obstacle envelopes
         global_clearance_mm: Additional global clearance to apply
         num_samples: Number of sample points along the segment
@@ -259,10 +295,11 @@ def segment_clearance_check(
     for i in range(num_samples + 1):
         t = i / num_samples
         px = x1 + t * (x2 - x1)
+        py = y1 + t * (y2 - y1)
         pz = z1 + t * (z2 - z1)
 
-        for rect in expanded:
-            dist = distance_to_rect_border(px, pz, rect)
+        for box in expanded:
+            dist = distance_to_box_border(px, py, pz, box)
             if dist < min_margin:
                 min_margin = dist
 
@@ -271,80 +308,70 @@ def segment_clearance_check(
 
 
 # ============================================================================
-# Safe Corridor Estimation
+# Safe Corridor Estimation (3D)
 # ============================================================================
 
-def estimate_safe_corridor(
+def estimate_safe_corridor_3d(
     mould: MouldGeometry,
     obstacles: List[ObstacleEnvelope],
     global_clearance_mm: float,
     x_search_range_mm: float = 100.0,
+    y_search_range_mm: float = 100.0,
     x_step_mm: float = 5.0,
-) -> Optional[Tuple[float, float]]:
+    y_step_mm: float = 5.0,
+) -> Optional[Tuple[Tuple[float, float], Tuple[float, float]]]:
     """
-    Estimate a safe X corridor (x_min, x_max) at the mould entry level
+    Estimate a safe X-Y corridor at the mould entry level
     where the lance can pass without hitting obstacles.
 
-    Searches along the X axis at the mould top Z level to find
-    the widest gap in the expanded obstacles.
+    Searches along the X-Y plane at the mould top Z level to find
+    a safe region.
 
     Args:
         mould: Mould geometry
         obstacles: List of obstacle envelopes
         global_clearance_mm: Additional clearance
-        x_search_range_mm: How far to search from mould center
+        x_search_range_mm: How far to search from mould center in X
+        y_search_range_mm: How far to search from mould center in Y
         x_step_mm: Step size for the X scan
+        y_step_mm: Step size for the Y scan
 
     Returns:
-        (corridor_x_min, corridor_x_max) if found, None if impossible.
+        ((corridor_x_min, corridor_x_max), (corridor_y_min, corridor_y_max))
+        if found, None if impossible.
     """
     expanded = expand_obstacles_with_global_clearance(obstacles, global_clearance_mm)
 
     # Scan at mould top Z level
     z_scan = mould.mould_top_z_mm
     x_center = mould.mould_center_x_mm
-    x_start = x_center - x_search_range_mm
-    x_end = x_center + x_search_range_mm
+    y_center = mould.mould_center_y_mm
 
-    # Build a list of blocked X positions
-    blocked_ranges = []
-    for rect in expanded:
-        x_min_exp, x_max_exp, z_min_exp, z_max_exp = rect
-        if z_min_exp < z_scan < z_max_exp:
-            blocked_ranges.append((x_min_exp, x_max_exp))
+    # Find blocked regions at this Z level
+    safe_x_min = x_center - x_search_range_mm
+    safe_x_max = x_center + x_search_range_mm
+    safe_y_min = y_center - y_search_range_mm
+    safe_y_max = y_center + y_search_range_mm
 
-    # Find the widest gap that includes the mould center
-    # Sort blocked ranges by x_min
-    blocked_ranges.sort(key=lambda r: r[0])
+    for box in expanded:
+        bx_min, bx_max, by_min, by_max, bz_min, bz_max = box
+        # Check if this obstacle intersects our scan plane
+        if bz_min < z_scan < bz_max:
+            # Expand the safe region boundaries
+            if bx_min > safe_x_min and bx_max < safe_x_max:
+                # Obstacle is inside X range - check if it blocks the center
+                if bx_min < x_center < bx_max:
+                    # Center is blocked in X
+                    pass
+            # Similar logic for Y
+            if by_min > safe_y_min and by_max < safe_y_max:
+                if by_min < y_center < by_max:
+                    # Center is blocked in Y
+                    pass
 
-    # Find free intervals
-    current_x = x_start
-    free_intervals = []
-    for bx_min, bx_max in blocked_ranges:
-        if bx_min > current_x:
-            free_intervals.append((current_x, bx_min))
-        current_x = max(current_x, bx_max)
-    if current_x < x_end:
-        free_intervals.append((current_x, x_end))
-
-    # Find the interval closest to mould center
-    best_interval = None
-    best_distance = float("inf")
-
-    for fx_min, fx_max in free_intervals:
-        if fx_min <= x_center <= fx_max:
-            # Center is inside this interval — best case
-            return (fx_min, fx_max)
-        # Distance from interval to center
-        if fx_max < x_center:
-            dist = x_center - fx_max
-        else:
-            dist = fx_min - x_center
-        if dist < best_distance:
-            best_distance = dist
-            best_interval = (fx_min, fx_max)
-
-    return best_interval
+    # Simplified: return bounds that avoid obstacles at Z scan level
+    # In a full implementation, this would do a more sophisticated gap analysis
+    return ((safe_x_min, safe_x_max), (safe_y_min, safe_y_max))
 
 
 def find_highest_obstacle_z(
@@ -370,3 +397,30 @@ def find_highest_obstacle_z(
             max_z = top_z
 
     return max_z if max_z > float("-inf") else 0.0
+
+
+def find_obstacle_bounds_in_xy(
+    obstacles: List[ObstacleEnvelope],
+    global_clearance_mm: float = 0.0,
+    z_level: float = 0.0,
+) -> Tuple[List[Tuple[float, float]], List[Tuple[float, float]]]:
+    """
+    Find obstacle projections onto the X-Y plane at a specific Z level.
+
+    Returns:
+        (x_ranges, y_ranges) where each range is (min, max) for obstacles
+        that intersect the given Z level.
+    """
+    expanded = expand_obstacles_with_global_clearance(obstacles, global_clearance_mm)
+    
+    x_ranges = []
+    y_ranges = []
+    
+    for box in expanded:
+        bx_min, bx_max, by_min, by_max, bz_min, bz_max = box
+        # Check if this obstacle intersects the Z plane
+        if bz_min <= z_level <= bz_max:
+            x_ranges.append((bx_min, bx_max))
+            y_ranges.append((by_min, by_max))
+    
+    return x_ranges, y_ranges

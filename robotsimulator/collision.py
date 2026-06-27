@@ -1,8 +1,8 @@
 """
-RobotSimulator — Collision Detection
+RobotSimulator — Collision Detection (3D)
 
-Collision checking for the X-Z swabbing trajectory.
-Validates trajectory points and segments against obstacle envelopes.
+3D collision checking for the X-Y-Z swabbing trajectory.
+Validates trajectory points and segments against 3D obstacle boxes.
 
 All coordinates in millimeters.
 """
@@ -23,8 +23,8 @@ from .geometry import (
     expand_obstacles_with_global_clearance,
     point_in_any_obstacle,
     min_clearance_to_obstacles,
-    distance_to_rect_border,
-    segment_collides_with_rect,
+    distance_to_box_border,
+    segment_collides_with_box,
     segment_clearance_check,
 )
 
@@ -38,21 +38,22 @@ WARNING_CLEARANCE_FACTOR = 1.5
 
 
 # ============================================================================
-# Point Collision Check
+# Point Collision Check (3D)
 # ============================================================================
 
 def check_point_collision(
     x: float,
+    y: float,
     z: float,
     obstacles: List[ObstacleEnvelope],
     global_clearance_mm: float,
     warning_factor: float = WARNING_CLEARANCE_FACTOR,
 ) -> Tuple[CollisionStatus, float]:
     """
-    Check a single point against all expanded obstacles.
+    Check a single 3D point against all expanded obstacles.
 
     Args:
-        x, z: Point coordinates
+        x, y, z: Point coordinates
         obstacles: List of obstacle envelopes
         global_clearance_mm: Global minimum clearance
         warning_factor: Factor of clearance for warning zone
@@ -63,20 +64,20 @@ def check_point_collision(
     if not obstacles:
         return CollisionStatus.CLEAR, float("inf")
 
-    expanded = expand_obstacles_with_global_clearance(obstacles, global_clearance_mm)
+    expanded = expand_obstacles_with_global_clearance( obstacles, global_clearance_mm)
 
     # Check if point is inside any expanded obstacle
-    for rect in expanded:
+    for box in expanded:
         # Use strict inside check (distance < 0 means inside)
-        dist = distance_to_rect_border(x, z, rect)
+        dist = distance_to_box_border(x, y, z, box)
         if dist < 0:
             # Point is inside an obstacle
             return CollisionStatus.COLLISION, dist
 
     # No collision — check for warning zone
     min_margin = float("inf")
-    for rect in expanded:
-        dist = distance_to_rect_border(x, z, rect)
+    for box in expanded:
+        dist = distance_to_box_border(x, y, z, box)
         if dist < min_margin:
             min_margin = dist
 
@@ -87,7 +88,7 @@ def check_point_collision(
 
 
 # ============================================================================
-# Trajectory Collision Check
+# Trajectory Collision Check (3D)
 # ============================================================================
 
 def check_trajectory_collisions(
@@ -97,7 +98,7 @@ def check_trajectory_collisions(
     num_segment_samples: int = 20,
 ) -> Tuple[List[TrajectoryPoint], List[str]]:
     """
-    Check all trajectory points and segments for collisions.
+    Check all trajectory points and segments for collisions in 3D.
 
     Updates the collision_status and clearance_margin_mm of each point.
     Also checks line segments between consecutive points.
@@ -123,7 +124,7 @@ def check_trajectory_collisions(
     # Check each point
     for point in points:
         status, margin = check_point_collision(
-            point.x_mm, point.z_mm,
+            point.x_mm, point.y_mm, point.z_mm,
             obstacles, global_clearance_mm,
         )
         point.collision_status = status
@@ -131,12 +132,12 @@ def check_trajectory_collisions(
 
         if status == CollisionStatus.COLLISION:
             warnings.append(
-                f"Point {point.point_id} ({point.x_mm:.1f}, {point.z_mm:.1f}) "
+                f"Point {point.point_id} ({point.x_mm:.1f}, {point.y_mm:.1f}, {point.z_mm:.1f}) "
                 f"COLLISION — inside obstacle (margin: {margin:.1f} mm)"
             )
         elif status == CollisionStatus.WARNING:
             warnings.append(
-                f"Point {point.point_id} ({point.x_mm:.1f}, {point.z_mm:.1f}) "
+                f"Point {point.point_id} ({point.x_mm:.1f}, {point.y_mm:.1f}, {point.z_mm:.1f}) "
                 f"WARNING — close to obstacle (margin: {margin:.1f} mm)"
             )
 
@@ -146,8 +147,8 @@ def check_trajectory_collisions(
         p2 = points[i + 1]
 
         is_clear, seg_margin = segment_clearance_check(
-            p1.x_mm, p1.z_mm,
-            p2.x_mm, p2.z_mm,
+            p1.x_mm, p1.y_mm, p1.z_mm,
+            p2.x_mm, p2.y_mm, p2.z_mm,
             obstacles, global_clearance_mm,
             num_samples=num_segment_samples,
         )
@@ -158,8 +159,9 @@ def check_trajectory_collisions(
                 p1.collision_status = CollisionStatus.WARNING
                 p1.clearance_margin_mm = min(p1.clearance_margin_mm, seg_margin)
                 warnings.append(
-                    f"Segment {p1.point_id}->{p2.point_id} passes through "
-                    f"obstacle zone (margin: {seg_margin:.1f} mm)"
+                    f"Segment {p1.point_id}({p1.x_mm:.1f},{p1.y_mm:.1f},{p1.z_mm:.1f})->"
+                    f"{p2.point_id}({p2.x_mm:.1f},{p2.y_mm:.1f},{p2.z_mm:.1f}) "
+                    f"passes through obstacle zone (margin: {seg_margin:.1f} mm)"
                 )
             if p2.collision_status == CollisionStatus.CLEAR:
                 p2.collision_status = CollisionStatus.WARNING

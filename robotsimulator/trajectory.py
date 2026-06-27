@@ -1,7 +1,7 @@
 """
-RobotSimulator — Trajectory Generator
+RobotSimulator — Trajectory Generator (3D)
 
-Generates the complete X-Z swabbing trajectory for a FANUC robot
+Generates the complete X-Y-Z swabbing trajectory for a FANUC robot
 on the blank side of an IS hollow glass forming machine.
 
 The trajectory follows these segments:
@@ -12,6 +12,11 @@ The trajectory follows these segments:
     5. SWAB_UP   — (Optional) Spray coating while moving up inside mould
     6. EXIT    — Move out of the mould
     7. Return to WAIT position
+
+NEW in 3D:
+    - Y-axis movements for moulds with depth
+    - Multiple Y passes for complete coverage
+    - Y-sweep patterns during swabbing
 
 All coordinates in millimeters.
 """
@@ -38,8 +43,9 @@ from .geometry import (
     expand_obstacles_with_global_clearance,
     point_in_any_obstacle,
     min_clearance_to_obstacles,
-    estimate_safe_corridor,
+    estimate_safe_corridor_3d,
     find_highest_obstacle_z,
+    find_obstacle_bounds_in_xy,
 )
 from .collision import check_trajectory_collisions
 from .velocity import apply_velocity_profile, get_non_swabbing_speed
@@ -53,7 +59,7 @@ def generate_trajectory(
     swabbing_params: SwabbingParameters,
 ) -> TrajectoryResult:
     """
-    Generate the complete swabbing trajectory.
+    Generate the complete 3D swabbing trajectory.
 
     This is the main entry point for trajectory generation.
     It creates the trajectory points, applies velocity modulation,
@@ -78,6 +84,8 @@ def generate_trajectory(
         swabbing_params.coating_start_z_mm = mould.mould_top_z_mm
     if swabbing_params.coating_end_z_mm == 0:
         swabbing_params.coating_end_z_mm = mould.mould_bottom_z_mm
+    if swabbing_params.swab_center_y_mm == 0:
+        swabbing_params.swab_center_y_mm = mould.mould_center_y_mm
 
     global_clearance = robot_params.minimum_clearance_mm
 
@@ -85,34 +93,40 @@ def generate_trajectory(
     highest_obstacle_z = find_highest_obstacle_z(obstacles, global_clearance)
     approach_z = highest_obstacle_z + swabbing_params.approach_height_mm
 
-    # Estimate safe corridor
-    safe_corridor = estimate_safe_corridor(
+    # Estimate safe corridor in 3D
+    safe_corridor = estimate_safe_corridor_3d(
         mould, obstacles, global_clearance,
         x_search_range_mm=robot_params.lance_length_mm * 0.8,
+        y_search_range_mm=mould.effective_y_depth_mm * 0.5,
     )
 
     # Determine the swabbing X position
     swab_x = mould.mould_center_x_mm + swabbing_params.entry_offset_x_mm
+    swab_y = swabbing_params.swab_center_y_mm
 
     if safe_corridor is not None:
+        (corridor_x_min, corridor_x_max), (corridor_y_min, corridor_y_max) = safe_corridor
         # Ensure swab_x is within the safe corridor
-        corridor_x_min, corridor_x_max = safe_corridor
         if swab_x < corridor_x_min or swab_x > corridor_x_max:
-            # Clamp to safe corridor, preferring centre
-            if mould.mould_center_x_mm >= corridor_x_min and \
-               mould.mould_center_x_mm <= corridor_x_max:
+            if mould.mould_center_x_mm >= corridor_x_min and mould.mould_center_x_mm <= corridor_x_max:
                 swab_x = mould.mould_center_x_mm
             else:
-                # Use the corridor centre
                 swab_x = (corridor_x_min + corridor_x_max) / 2.0
+        # Ensure swab_y is within the safe corridor
+        if swab_y < corridor_y_min or swab_y > corridor_y_max:
+            if mould.mould_center_y_mm >= corridor_y_min and mould.mould_center_y_mm <= corridor_y_max:
+                swab_y = mould.mould_center_y_mm
+            else:
+                swab_y = (corridor_y_min + corridor_y_max) / 2.0
 
     # Generate raw trajectory points
-    points = _build_trajectory_points(
+    points = _build_trajectory_points_3d(
         mould=mould,
         robot_params=robot_params,
         swabbing_params=swabbing_params,
         approach_z=approach_z,
         swab_x=swab_x,
+        swab_y=swab_y,
     )
 
     # Apply velocity modulation
@@ -139,9 +153,9 @@ def generate_trajectory(
 
     # If not feasible, try with X offset
     if not feasible:
-        offset_result = _try_offset_trajectory(
+        offset_result = _try_offset_trajectory_3d(
             mould, obstacles, robot_params, swabbing_params,
-            approach_z, swabbing_params,
+            approach_z, swab_x, swab_y,
         )
         if offset_result is not None:
             points, warnings_offset, feasible = offset_result
@@ -159,21 +173,22 @@ def generate_trajectory(
     )
 
 
-def _build_trajectory_points(
+def _build_trajectory_points_3d(
     mould: MouldGeometry,
     robot_params: RobotParameters,
     swabbing_params: SwabbingParameters,
     approach_z: float,
     swab_x: float,
+    swab_y: float,
 ) -> List[TrajectoryPoint]:
     """
-    Build the raw trajectory point list.
+    Build the raw 3D trajectory point list.
 
     The trajectory structure:
       - Wait position (high, safe)
       - Approach points (descending toward mould)
       - Entry point (just above mould top, inside safe corridor)
-      - Swab down points (inside mould, step by step)
+      - Swab down points (inside mould, step by step in Z, optionally in Y)
       - Swab up points (optional, if include_swab_up=True)
       - Exit point (pulling out)
       - Return to wait
@@ -184,6 +199,7 @@ def _build_trajectory_points(
         swabbing_params: Swabbing parameters
         approach_z: Z height for safe approach
         swab_x: X position for swabbing (along mould center or offset)
+        swab_y: Y position for swabbing
 
     Returns:
         List of TrajectoryPoint objects.
@@ -191,15 +207,14 @@ def _build_trajectory_points(
     points = []
     pid = 0
 
-    # The nozzle X position = swab_x (centre or offset)
-    # The robot TCP is at the top of the lance
-    # For a vertical lance: robot_x = nozzle_x, robot_z = nozzle_z + lance_length
-
     # === 1. WAIT POSITION ===
-    wait_x = swab_x
-    wait_z = approach_z
+    # Default wait position: mould center + radius + 10mm in X, mould center in Y, approach_z in Z
+    # Can be overridden by wait_offset_* parameters
+    wait_x = mould.mould_center_x_mm + mould.mould_radius_mm + 10.0 + swabbing_params.wait_offset_x_mm
+    wait_y = mould.mould_center_y_mm + swabbing_params.wait_offset_y_mm
+    wait_z = approach_z + swabbing_params.wait_offset_z_mm
     points.append(TrajectoryPoint(
-        point_id=pid, x_mm=wait_x, z_mm=wait_z,
+        point_id=pid, x_mm=wait_x, y_mm=wait_y, z_mm=wait_z,
         speed_mm_s=0.0, valve_state=ValveState.OFF,
         segment_type=SegmentType.WAIT,
         note="Wait position — safe height above obstacles",
@@ -208,7 +223,6 @@ def _build_trajectory_points(
 
     # === 2. APPROACH ===
     # Move down from wait height to just above the mould top
-    # Adding several intermediate approach points for smooth motion
     approach_target_z = mould.mould_top_z_mm + robot_params.minimum_clearance_mm + 10.0
     num_approach_steps = max(2, int((wait_z - approach_target_z) / 50.0))
 
@@ -216,8 +230,8 @@ def _build_trajectory_points(
         t = i / num_approach_steps
         az = wait_z + t * (approach_target_z - wait_z)
         points.append(TrajectoryPoint(
-            point_id=pid, x_mm=swab_x, z_mm=az,
-            speed_mm_s=0.0,  # Will be set by velocity module
+            point_id=pid, x_mm=swab_x, y_mm=swab_y, z_mm=az,
+            speed_mm_s=0.0,
             valve_state=ValveState.OFF,
             segment_type=SegmentType.APPROACH,
             note=f"Approach step {i}/{num_approach_steps}",
@@ -225,10 +239,9 @@ def _build_trajectory_points(
         pid += 1
 
     # === 3. ENTRY ===
-    # Move horizontally or diagonally into the mould entry
     entry_z = mould.mould_top_z_mm
     points.append(TrajectoryPoint(
-        point_id=pid, x_mm=swab_x, z_mm=entry_z,
+        point_id=pid, x_mm=swab_x, y_mm=swab_y, z_mm=entry_z,
         speed_mm_s=0.0,
         valve_state=ValveState.OFF,
         segment_type=SegmentType.ENTER,
@@ -236,32 +249,60 @@ def _build_trajectory_points(
     ))
     pid += 1
 
-    # === 4. SWAB DOWN ===
-    # Descend inside the mould from top to bottom
+    # === 4. SWAB DOWN (with optional Y sweep) ===
     coating_start = swabbing_params.coating_start_z_mm
     coating_end = swabbing_params.coating_end_z_mm
     step = swabbing_params.swab_step_mm
 
-    # Ensure we swab from top to bottom of the mould
     swab_start_z = min(coating_start, mould.mould_top_z_mm)
     swab_end_z = max(coating_end, mould.mould_bottom_z_mm)
 
+    # Determine Y sweep range
+    if swabbing_params.include_y_sweep and swabbing_params.swab_y_range_mm > 0:
+        y_sweep = True
+        y_start = swab_y - swabbing_params.swab_y_range_mm / 2.0
+        y_end = swab_y + swabbing_params.swab_y_range_mm / 2.0
+        num_y_steps = max(1, int(swabbing_params.swab_y_range_mm / swabbing_params.swab_y_step_mm))
+    else:
+        y_sweep = False
+        y_start = swab_y
+        y_end = swab_y
+        num_y_steps = 1
+
     current_z = swab_start_z
+    y_direction = 1  # Start moving in positive Y direction
+    
     while current_z > swab_end_z:
         next_z = max(current_z - step, swab_end_z)
+        
+        if y_sweep:
+            # Calculate Y position based on zigzag pattern
+            z_progress = (swab_start_z - current_z) / (swab_start_z - swab_end_z)
+            y_segment = int(z_progress * num_y_steps)
+            if y_segment % 2 == 0:
+                # Moving forward in Y
+                y_t = (y_segment * swabbing_params.swab_y_step_mm) / swabbing_params.swab_y_range_mm
+                current_y = y_start + y_t * (y_end - y_start)
+            else:
+                # Moving backward in Y
+                y_t = (y_segment * swabbing_params.swab_y_step_mm) / swabbing_params.swab_y_range_mm
+                current_y = y_end - y_t * (y_end - y_start)
+        else:
+            current_y = swab_y
+            
         points.append(TrajectoryPoint(
-            point_id=pid, x_mm=swab_x, z_mm=current_z,
-            speed_mm_s=0.0,  # Set by velocity module
-            valve_state=ValveState.OFF,  # Set by valve timing
+            point_id=pid, x_mm=swab_x, y_mm=current_y, z_mm=current_z,
+            speed_mm_s=0.0,
+            valve_state=ValveState.OFF,
             segment_type=SegmentType.SWAB_DOWN,
-            note=f"Swab down Z={current_z:.1f}",
+            note=f"Swab down Z={current_z:.1f}, Y={current_y:.1f}",
         ))
         pid += 1
         current_z = next_z
 
     # Final point at bottom of mould
     points.append(TrajectoryPoint(
-        point_id=pid, x_mm=swab_x, z_mm=swab_end_z,
+        point_id=pid, x_mm=swab_x, y_mm=swab_y, z_mm=swab_end_z,
         speed_mm_s=0.0,
         valve_state=ValveState.OFF,
         segment_type=SegmentType.SWAB_DOWN,
@@ -275,7 +316,7 @@ def _build_trajectory_points(
         while current_z < swab_start_z:
             next_z = min(current_z + step, swab_start_z)
             points.append(TrajectoryPoint(
-                point_id=pid, x_mm=swab_x, z_mm=max(current_z, swab_end_z),
+                point_id=pid, x_mm=swab_x, y_mm=swab_y, z_mm=max(current_z, swab_end_z),
                 speed_mm_s=0.0,
                 valve_state=ValveState.OFF,
                 segment_type=SegmentType.SWAB_UP,
@@ -284,9 +325,8 @@ def _build_trajectory_points(
             pid += 1
             current_z = next_z
 
-        # Final up point
         points.append(TrajectoryPoint(
-            point_id=pid, x_mm=swab_x, z_mm=swab_start_z,
+            point_id=pid, x_mm=swab_x, y_mm=swab_y, z_mm=swab_start_z,
             speed_mm_s=0.0,
             valve_state=ValveState.OFF,
             segment_type=SegmentType.SWAB_UP,
@@ -297,7 +337,7 @@ def _build_trajectory_points(
     # === 6. EXIT ===
     exit_z = mould.mould_top_z_mm + robot_params.minimum_clearance_mm + 5.0
     points.append(TrajectoryPoint(
-        point_id=pid, x_mm=swab_x, z_mm=exit_z,
+        point_id=pid, x_mm=swab_x, y_mm=swab_y, z_mm=exit_z,
         speed_mm_s=0.0,
         valve_state=ValveState.OFF,
         segment_type=SegmentType.EXIT,
@@ -307,7 +347,7 @@ def _build_trajectory_points(
 
     # === 7. RETURN TO WAIT ===
     points.append(TrajectoryPoint(
-        point_id=pid, x_mm=wait_x, z_mm=wait_z,
+        point_id=pid, x_mm=wait_x, y_mm=wait_y, z_mm=wait_z,
         speed_mm_s=0.0,
         valve_state=ValveState.OFF,
         segment_type=SegmentType.EXIT,
@@ -318,13 +358,14 @@ def _build_trajectory_points(
     return points
 
 
-def _try_offset_trajectory(
+def _try_offset_trajectory_3d(
     mould: MouldGeometry,
     obstacles: List[ObstacleEnvelope],
     robot_params: RobotParameters,
     swabbing_params: SwabbingParameters,
     approach_z: float,
-    original_swabbing_params: SwabbingParameters,
+    base_swab_x: float,
+    base_swab_y: float,
 ) -> Optional[Tuple[List[TrajectoryPoint], List[str], bool]]:
     """
     Try to find a feasible trajectory by offsetting the X position.
@@ -336,9 +377,10 @@ def _try_offset_trajectory(
         mould: Mould geometry
         obstacles: List of obstacles
         robot_params: Robot parameters
-        swabbing_params: Swabbing parameters (will be modified for offset)
+        swabbing_params: Swabbing parameters
         approach_z: Safe approach Z height
-        original_swabbing_params: Original swabbing params for reference
+        base_swab_x: Base X position
+        base_swab_y: Base Y position
 
     Returns:
         (points, warnings, feasible) if feasible path found, None if not.
@@ -349,22 +391,25 @@ def _try_offset_trajectory(
 
     for offset in np.arange(offset_step, max_offset + offset_step, offset_step):
         for direction in [1, -1]:  # Try positive X then negative X
-            test_x = mould.mould_center_x_mm + direction * offset
+            test_x = base_swab_x + direction * offset
 
-            # Build trajectory with offset
             modified_params = SwabbingParameters(
                 reference_diameter_mm=swabbing_params.reference_diameter_mm,
                 coating_start_z_mm=swabbing_params.coating_start_z_mm,
                 coating_end_z_mm=swabbing_params.coating_end_z_mm,
                 swab_step_mm=swabbing_params.swab_step_mm,
                 include_swab_up=swabbing_params.include_swab_up,
-                entry_offset_x_mm=direction * offset,
+                entry_offset_x_mm=base_swab_x + direction * offset - mould.mould_center_x_mm,
                 approach_height_mm=swabbing_params.approach_height_mm,
+                swab_center_y_mm=base_swab_y,
+                include_y_sweep=swabbing_params.include_y_sweep,
+                swab_y_range_mm=swabbing_params.swab_y_range_mm,
+                swab_y_step_mm=swabbing_params.swab_y_step_mm,
             )
 
-            points = _build_trajectory_points(
+            points = _build_trajectory_points_3d(
                 mould, robot_params, modified_params,
-                approach_z, test_x,
+                approach_z, test_x, base_swab_y,
             )
 
             points = apply_velocity_profile(

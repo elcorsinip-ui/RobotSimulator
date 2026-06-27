@@ -5,6 +5,23 @@ All notable changes to **RobotSimulator** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-06-27
+
+### Added
+- **3D visualization**: Complete 3D trajectory plots with mould, obstacles, and trajectory (matplotlib)
+- **Wait position configuration**: User-configurable wait point offsets (X, Y, Z) in UI sidebar
+- **Default mould obstacles**: Pre-loaded "mold left" and "mold right" obstacles (MOULD_UPPER_EDGE type)
+- **Default parameter updates**: Mould diameter 60mm, height 250mm, top Z 250mm
+
+### Fixed
+- **3D plotting crashes**: Fixed `NameError: np not defined` (missing numpy import)
+- **3D obstacle rendering**: Fixed `enumerate(expanded=True)` typo in `_draw_obstacles_3d`
+- **Marker style errors**: Fixed `ValueError: Unrecognized marker style '!'` in both 3D and 2D plots (replaced with `*`)
+
+### Changed
+- **Wait point default**: Now at `mould_center_x + radius + 10mm` (was at swab_x)
+- **Mould geometry**: Updated defaults for typical 60mm diameter blank mould
+
 ## [0.2.0] - 2026-06-26
 
 ### Added
