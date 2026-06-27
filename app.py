@@ -10,7 +10,7 @@ from robotsimulator import VERSION, VERSION_STRING, BUILD_DATE, PROJECT_NAME, PR
 from robotsimulator.models import MouldGeometry, ObstacleEnvelope, ObstacleType, RobotParameters, SwabbingParameters, ProjectConfiguration, VALID_LANCE_LENGTHS
 from robotsimulator.trajectory import generate_trajectory
 from robotsimulator.export import export_csv, export_json, generate_report
-from robotsimulator.plotting import create_trajectory_plot_3d, create_projection_plots, save_plot
+from robotsimulator.plotting import create_trajectory_plot_3d, create_trajectory_plot_3d_interactive, create_projection_plots, save_plot
 
 st.set_page_config(page_title=f"{PROJECT_NAME} (3D)", page_icon="🤖", layout="wide")
 st.title(f"🤖 {PROJECT_NAME} (3D)")
@@ -151,8 +151,18 @@ if st.session_state.trajectory_result:
     m3.metric("Warnings", len([p for p in res.points if p.collision_status.name == "WARNING"]))
     
     st.subheader("🎯 3D View")
-    fig3d = create_trajectory_plot_3d(cfg.mould, cfg.obstacles, res, cfg.robot_params.minimum_clearance_mm)
-    st.pyplot(fig3d)
+    use_interactive_3d = st.checkbox("Interactive 3D (pan/tilt/zoom)", value=True, key="interactive_3d")
+    try:
+        if use_interactive_3d:
+            fig3d = create_trajectory_plot_3d_interactive(cfg.mould, cfg.obstacles, res, cfg.robot_params.minimum_clearance_mm)
+            st.plotly_chart(fig3d, use_container_width=True)
+        else:
+            fig3d = create_trajectory_plot_3d(cfg.mould, cfg.obstacles, res, cfg.robot_params.minimum_clearance_mm)
+            st.pyplot(fig3d)
+    except ImportError as e:
+        st.warning(f"Interactive 3D not available: {e}. Falling back to static plot.")
+        fig3d = create_trajectory_plot_3d(cfg.mould, cfg.obstacles, res, cfg.robot_params.minimum_clearance_mm)
+        st.pyplot(fig3d)
     
     st.subheader("📐 Projections")
     fig2d = create_projection_plots(cfg.mould, cfg.obstacles, res, cfg.robot_params.minimum_clearance_mm)

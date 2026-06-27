@@ -5,6 +5,19 @@ All notable changes to **RobotSimulator** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-06-27
+
+### Added
+- **Interactive 3D visualization**: Plotly-based 3D plot with native pan, tilt (rotate), and zoom in browser
+- **Toggle in UI**: Checkbox "Interactive 3D (pan/tilt/zoom)" to switch between static (matplotlib) and interactive (Plotly) modes
+- **Hover tooltips**: Point details on hover in interactive mode
+
+### Changed
+- **Requirements**: Added `plotly>=5.17.0` dependency
+
+### Fixed
+- Graceful fallback: If Plotly unavailable, automatically falls back to matplotlib static 3D plot
+
 ## [0.3.0] - 2026-06-27
 
 ### Added

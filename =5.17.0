@@ -1,0 +1,9 @@
+Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Collecting plotly
+  Downloading https://www.piwheels.org/simple/plotly/plotly-6.8.0-py3-none-any.whl.metadata (9.0 kB)
+Requirement already satisfied: narwhals>=1.15.1 in ./venv/lib/python3.13/site-packages (from plotly) (2.22.1)
+Requirement already satisfied: packaging in ./venv/lib/python3.13/site-packages (from plotly) (26.2)
+Downloading https://www.piwheels.org/simple/plotly/plotly-6.8.0-py3-none-any.whl (9.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 9.9/9.9 MB 3.1 MB/s eta 0:00:00
+Installing collected packages: plotly
+Successfully installed plotly-6.8.0

@@ -21,6 +21,13 @@ import mpl_toolkits.mplot3d.art3d as art3d
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.figure import Figure
 
+# Plotly for interactive 3D
+try:
+    import plotly.graph_objects as go
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+
 from .models import (
     MouldGeometry,
     ObstacleEnvelope,
@@ -130,6 +137,250 @@ def create_trajectory_plot_3d(
 
     plt.tight_layout()
     return fig
+
+
+def create_trajectory_plot_3d_interactive(
+    mould: MouldGeometry,
+    obstacles: List[ObstacleEnvelope],
+    result: TrajectoryResult,
+    global_clearance_mm: float = 0.0,
+    title: str = "FANUC Robot Swabbing Trajectory — 3D View (Interactive)",
+) -> "go.Figure":
+    """
+    Create an interactive 3D plot using Plotly.
+    
+    Supports pan, tilt (rotate), and zoom natively in the browser.
+    
+    Args:
+        mould: Mould geometry
+        obstacles: List of obstacles
+        result: Calculated trajectory result
+        global_clearance_mm: Global clearance for obstacle expansion
+        title: Plot title
+        
+    Returns:
+        plotly.graph_objects.Figure with interactive 3D visualization.
+        
+    Raises:
+        ImportError: If plotly is not installed.
+    """
+    if not PLOTLY_AVAILABLE:
+        raise ImportError(
+            "Plotly is required for interactive 3D plots. "
+            "Install with: pip install plotly"
+        )
+    
+    fig = go.Figure()
+    
+    # === Draw mould as cylinder ===
+    z_bottom = mould.mould_bottom_z_mm
+    z_top = mould.mould_top_z_mm
+    radius = mould.mould_radius_mm
+    x_center = mould.mould_center_x_mm
+    y_center = mould.mould_center_y_mm
+    
+    # Cylinder surface (use fewer points for performance)
+    z_cyl = np.linspace(z_bottom, z_top, 30)
+    theta = np.linspace(0, 2 * np.pi, 30)
+    theta_grid, z_grid = np.meshgrid(theta, z_cyl)
+    x_grid = x_center + radius * np.cos(theta_grid)
+    y_grid = y_center + radius * np.sin(theta_grid)
+    
+    fig.add_trace(go.Surface(
+        x=x_grid, y=y_grid, z=z_grid,
+        colorscale=[[0, COLORS["mould_fill"]], [1, COLORS["mould_fill"]]],
+        opacity=0.3,
+        showscale=False,
+        name="Mould cavity",
+        hoverinfo="skip",
+    ))
+    
+    # Top and bottom edges
+    theta_circle = np.linspace(0, 2 * np.pi, 100)
+    x_circle = x_center + radius * np.cos(theta_circle)
+    y_circle = y_center + radius * np.sin(theta_circle)
+    
+    fig.add_trace(go.Scatter3d(
+        x=x_circle, y=y_circle, z=np.full_like(theta_circle, z_top),
+        mode='lines', line=dict(color=COLORS["mould_edge"], width=4),
+        name="Mould top", hoverinfo="skip",
+    ))
+    fig.add_trace(go.Scatter3d(
+        x=x_circle, y=y_circle, z=np.full_like(theta_circle, z_bottom),
+        mode='lines', line=dict(color=COLORS["mould_edge"], width=2, dash='dash'),
+        name="Mould bottom", hoverinfo="skip",
+    ))
+    
+    # === Draw obstacles ===
+    for obs in obstacles:
+        # Expanded box
+        x_exp = [
+            obs.expanded_x_min_mm - global_clearance_mm,
+            obs.expanded_x_max_mm + global_clearance_mm,
+        ]
+        y_exp = [
+            obs.expanded_y_min_mm - global_clearance_mm,
+            obs.expanded_y_max_mm + global_clearance_mm,
+        ]
+        z_exp = [
+            obs.expanded_z_min_mm - global_clearance_mm,
+            obs.expanded_z_max_mm + global_clearance_mm,
+        ]
+        _add_box_edges_plotly(fig, x_exp, y_exp, z_exp,
+                              color=COLORS["obstacle_expanded"],
+                              width=2, dash='dash', opacity=0.3,
+                              name=f"{obs.name} (expanded)")
+        
+        # Original box
+        x_orig = [obs.x_min_mm, obs.x_max_mm]
+        y_orig = [obs.y_min_mm, obs.y_max_mm]
+        z_orig = [obs.z_min_mm, obs.z_max_mm]
+        _add_box_edges_plotly(fig, x_orig, y_orig, z_orig,
+                              color=COLORS["obstacle_edge"],
+                              width=4, dash='solid', opacity=0.8,
+                              name=f"{obs.name}")
+        
+        # Label
+        fig.add_trace(go.Scatter3d(
+            x=[obs.center_x_mm], y=[obs.center_y_mm], z=[obs.center_z_mm],
+            mode='text', text=[obs.name],
+            textfont=dict(size=10, color='white', family='Arial Black'),
+            showlegend=False, hoverinfo="skip",
+        ))
+    
+    # === Draw trajectory ===
+    if result.points:
+        xs = [p.x_mm for p in result.points]
+        ys = [p.y_mm for p in result.points]
+        zs = [p.z_mm for p in result.points]
+        
+        # Trajectory line
+        fig.add_trace(go.Scatter3d(
+            x=xs, y=ys, z=zs,
+            mode='lines', line=dict(color=COLORS["trajectory_line"], width=4),
+            name="Trajectory", hoverinfo="skip",
+        ))
+        
+        # Points by collision status
+        for status, color, marker, size, name in [
+            (CollisionStatus.COLLISION, COLORS["trajectory_collision"], 'x', 6, "Collision"),
+            (CollisionStatus.WARNING, COLORS["trajectory_warning"], 'diamond', 5, "Warning"),
+        ]:
+            pts = [p for p in result.points if p.collision_status == status]
+            if pts:
+                fig.add_trace(go.Scatter3d(
+                    x=[p.x_mm for p in pts], y=[p.y_mm for p in pts], z=[p.z_mm for p in pts],
+                    mode='markers',
+                    marker=dict(symbol=marker, color=color, size=size, line=dict(width=1, color='white')),
+                    name=name, hoverinfo="text",
+                    hovertext=[f"{p.segment_type.value} Z={p.z_mm:.1f}" for p in pts],
+                ))
+        
+        # Clear points by segment type
+        for seg_type in SegmentType:
+            pts = [p for p in result.points 
+                   if p.collision_status == CollisionStatus.CLEAR and p.segment_type == seg_type]
+            if pts:
+                color = _get_segment_color(seg_type)
+                marker = _get_segment_marker_plotly(seg_type)
+                fig.add_trace(go.Scatter3d(
+                    x=[p.x_mm for p in pts], y=[p.y_mm for p in pts], z=[p.z_mm for p in pts],
+                    mode='markers',
+                    marker=dict(symbol=marker, color=color, size=4, line=dict(width=1, color='white')),
+                    name=seg_type.value, hoverinfo="text",
+                    hovertext=[f"Z={p.z_mm:.1f}" for p in pts],
+                ))
+        
+        # Valve ON zones
+        valve_on = [p for p in result.points if p.valve_state == ValveState.ON]
+        if valve_on:
+            fig.add_trace(go.Scatter3d(
+                x=[p.x_mm for p in valve_on], y=[p.y_mm for p in valve_on], z=[p.z_mm for p in valve_on],
+                mode='lines', line=dict(color=COLORS["valve_on"], width=8),
+                name="Valve ON", opacity=0.5, hoverinfo="skip",
+            ))
+    
+    # === Layout ===
+    fig.update_layout(
+        title=dict(text=title, font=dict(size=16)),
+        scene=dict(
+            xaxis=dict(title="X [mm]", showgrid=True, gridcolor=COLORS["grid"]),
+            yaxis=dict(title="Y [mm]", showgrid=True, gridcolor=COLORS["grid"]),
+            zaxis=dict(title="Z [mm]", showgrid=True, gridcolor=COLORS["grid"]),
+            aspectmode='data',
+            camera=dict(eye=dict(x=1.5, y=1.5, z=1.2)),
+        ),
+        legend=dict(
+            x=0.01, y=0.99,
+            bgcolor='rgba(255,255,255,0.8)',
+            bordercolor='gray', borderwidth=1,
+            font=dict(size=10),
+        ),
+        margin=dict(l=0, r=0, t=50, b=0),
+        showlegend=True,
+    )
+    
+    # Add safety warning annotation
+    fig.add_annotation(
+        x=0.01, y=0.01, xref="paper", yref="paper",
+        text="⚠️ Engineering tool only — validate with robot simulation before use",
+        showarrow=False, font=dict(size=10, color="red"),
+        bgcolor="rgba(255,255,255,0.8)", bordercolor="red", borderwidth=1,
+    )
+    
+    return fig
+
+
+def _add_box_edges_plotly(fig, x, y, z, color, width=2, dash='solid', opacity=1.0, name=None):
+    """Add 12 edges of a 3D box to a Plotly figure."""
+    x_min, x_max = x
+    y_min, y_max = y
+    z_min, z_max = z
+    
+    edges = [
+        # Bottom face
+        [(x_min, y_min, z_min), (x_max, y_min, z_min)],
+        [(x_max, y_min, z_min), (x_max, y_max, z_min)],
+        [(x_max, y_max, z_min), (x_min, y_max, z_min)],
+        [(x_min, y_max, z_min), (x_min, y_min, z_min)],
+        # Top face
+        [(x_min, y_min, z_max), (x_max, y_min, z_max)],
+        [(x_max, y_min, z_max), (x_max, y_max, z_max)],
+        [(x_max, y_max, z_max), (x_min, y_max, z_max)],
+        [(x_min, y_max, z_max), (x_min, y_min, z_max)],
+        # Vertical
+        [(x_min, y_min, z_min), (x_min, y_min, z_max)],
+        [(x_max, y_min, z_min), (x_max, y_min, z_max)],
+        [(x_max, y_max, z_min), (x_max, y_max, z_max)],
+        [(x_min, y_max, z_min), (x_min, y_max, z_max)],
+    ]
+    
+    for edge in edges:
+        xs = [p[0] for p in edge]
+        ys = [p[1] for p in edge]
+        zs = [p[2] for p in edge]
+        fig.add_trace(go.Scatter3d(
+            x=xs, y=ys, z=zs,
+            mode='lines', line=dict(color=color, width=width, dash=dash),
+            opacity=opacity, name=name, showlegend=False, hoverinfo="skip",
+        ))
+    # Only show legend for first edge
+    if name:
+        fig.data[-1].showlegend = True
+        fig.data[-1].name = name
+
+
+def _get_segment_marker_plotly(segment: SegmentType) -> str:
+    """Get Plotly marker symbol for a segment type."""
+    marker_map = {
+        SegmentType.WAIT: 'square',
+        SegmentType.APPROACH: 'triangle-up',
+        SegmentType.ENTER: 'diamond',
+        SegmentType.SWAB_DOWN: 'circle',
+        SegmentType.SWAB_UP: 'circle',
+        SegmentType.EXIT: 'triangle-down',
+    }
+    return marker_map.get(segment, 'circle')
 
 
 def create_projection_plots(
