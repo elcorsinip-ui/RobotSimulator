@@ -2,6 +2,9 @@
 RobotSimulator — Streamlit Web Application (3D)
 FANUC Robot Swabbing Trajectory Calculator for IS Machine — 3D Version
 Run with: streamlit run app.py
+
+Version 0.3.2: Added obstacle edit/remove, default deflector obstacle,
+DEFLECTOR type excluded from wait Z calculation (robot passes under).
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -63,6 +66,16 @@ with st.sidebar:
 if "obstacles" not in st.session_state:
     st.session_state.obstacles = [
         ObstacleEnvelope(
+            name="deflector",
+            obstacle_type=ObstacleType.DEFLECTOR,
+            x_min_mm=-50.0, x_max_mm=50.0,
+            y_min_mm=-50.0, y_max_mm=50.0,
+            z_min_mm=500.0, z_max_mm=600.0,
+            clearance_mm=5.0,
+        ),
+        # DEFLECTOR type obstacles are ignored for wait/approach Z calculation
+        # (robot passes UNDER them). Other types condition the wait Z.
+        ObstacleEnvelope(
             name="mold left",
             obstacle_type=ObstacleType.MOULD_UPPER_EDGE,
             x_min_mm=-50.0, x_max_mm=-20.0,
@@ -83,6 +96,7 @@ if "trajectory_result" not in st.session_state: st.session_state.trajectory_resu
 if "config" not in st.session_state: st.session_state.config = None
 
 st.subheader("🚧 Obstacles (3D)")
+st.caption("Each obstacle has Edit (✏️) and Remove (🗑️) actions. DEFLECTOR types are excluded from wait Z calc (robot passes under).")
 c1, c2, c3 = st.columns(3)
 with c1:
     obs_name = st.text_input("Name", key="on")
@@ -110,7 +124,65 @@ if st.session_state.obstacles:
     for i, obs in enumerate(st.session_state.obstacles):
         with st.expander(f"{obs.name}"):
             st.write(f"X:[{obs.x_min_mm:.1f},{obs.x_max_mm:.1f}] Y:[{obs.y_min_mm:.1f},{obs.y_max_mm:.1f}] Z:[{obs.z_min_mm:.1f},{obs.z_max_mm:.1f}]")
-            if st.button(f"Remove {i}"): st.session_state.obstacles.pop(i); st.rerun()
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button(f"✏️ Edit {i}", key=f"edit_{i}"):
+                    st.session_state.editing_obs_idx = i
+                    st.session_state.edit_name = obs.name
+                    st.session_state.edit_type = obs.obstacle_type.value
+                    st.session_state.edit_x_min = obs.x_min_mm
+                    st.session_state.edit_x_max = obs.x_max_mm
+                    st.session_state.edit_y_min = obs.y_min_mm
+                    st.session_state.edit_y_max = obs.y_max_mm
+                    st.session_state.edit_z_min = obs.z_min_mm
+                    st.session_state.edit_z_max = obs.z_max_mm
+                    st.session_state.edit_clearance = obs.clearance_mm
+                    st.rerun()
+            with c2:
+                if st.button(f"🗑️ Remove {i}", key=f"remove_{i}"):
+                    st.session_state.obstacles.pop(i)
+                    st.rerun()
+
+# Edit obstacle form
+if "editing_obs_idx" in st.session_state and st.session_state.editing_obs_idx is not None:
+    idx = st.session_state.editing_obs_idx
+    if idx < len(st.session_state.obstacles):
+        obs = st.session_state.obstacles[idx]
+        with st.form(f"edit_form_{idx}"):
+            st.subheader(f"Editing: {obs.name}")
+            e1, e2, e3 = st.columns(3)
+            with e1:
+                edit_name = st.text_input("Name", value=st.session_state.get("edit_name", obs.name), key=f"en_{idx}")
+                edit_type = st.selectbox("Type", [t.value for t in ObstacleType], index=[t.value for t in ObstacleType].index(st.session_state.get("edit_type", obs.obstacle_type.value)), key=f"et_{idx}")
+                edit_x_min = st.number_input("X min", value=st.session_state.get("edit_x_min", obs.x_min_mm), step=5.0, key=f"ex1_{idx}")
+                edit_y_min = st.number_input("Y min", value=st.session_state.get("edit_y_min", obs.y_min_mm), step=5.0, key=f"ey1_{idx}")
+            with e2:
+                edit_clearance = st.number_input("Clearance [mm]", 0.0, value=st.session_state.get("edit_clearance", obs.clearance_mm), step=1.0, key=f"ec_{idx}")
+                edit_x_max = st.number_input("X max", value=st.session_state.get("edit_x_max", obs.x_max_mm), step=5.0, key=f"ex2_{idx}")
+                edit_y_max = st.number_input("Y max", value=st.session_state.get("edit_y_max", obs.y_max_mm), step=5.0, key=f"ey2_{idx}")
+            with e3:
+                st.write("")
+                edit_z_min = st.number_input("Z min", value=st.session_state.get("edit_z_min", obs.z_min_mm), step=5.0, key=f"ez1_{idx}")
+                edit_z_max = st.number_input("Z max", value=st.session_state.get("edit_z_max", obs.z_max_mm), step=5.0, key=f"ez2_{idx}")
+            save_edit, cancel_edit = st.columns(2)
+            with save_edit:
+                if st.form_submit_button("💾 Save", use_container_width=True):
+                    try:
+                        new_name = edit_name.strip() if edit_name else obs.name
+                        st.session_state.obstacles[idx] = ObstacleEnvelope(
+                            new_name, ObstacleType(edit_type),
+                            edit_x_min, edit_x_max, edit_y_min, edit_y_max,
+                            edit_z_min, edit_z_max, edit_clearance
+                        )
+                        del st.session_state.editing_obs_idx
+                        st.success("Saved!")
+                        st.rerun()
+                    except ValueError as e:
+                        st.error(str(e))
+            with cancel_edit:
+                if st.form_submit_button("❌ Cancel", use_container_width=True):
+                    del st.session_state.editing_obs_idx
+                    st.rerun()
 
 if calc_btn:
     with st.spinner("Calculating..."):

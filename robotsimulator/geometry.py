@@ -13,7 +13,7 @@ from __future__ import annotations
 import math
 from typing import List, Tuple, Optional
 
-from .models import ObstacleEnvelope, MouldGeometry
+from .models import ObstacleEnvelope, MouldGeometry, ObstacleType
 
 
 # ============================================================================
@@ -377,11 +377,18 @@ def estimate_safe_corridor_3d(
 def find_highest_obstacle_z(
     obstacles: List[ObstacleEnvelope],
     global_clearance_mm: float = 0.0,
+    exclude_types: Optional[List[ObstacleType]] = None,
 ) -> float:
     """
     Find the highest Z coordinate of all expanded obstacles.
 
     Used to determine the approach height that clears all obstacles.
+
+    Args:
+        obstacles: List of obstacles
+        global_clearance_mm: Global clearance to add
+        exclude_types: Obstacle types to exclude from height calculation.
+            Defaults to [ObstacleType.DEFLECTOR] (upper obstacles that robot passes under).
 
     Returns:
         Maximum Z coordinate across all expanded obstacle tops.
@@ -390,8 +397,13 @@ def find_highest_obstacle_z(
     if not obstacles:
         return 0.0
 
+    if exclude_types is None:
+        exclude_types = [ObstacleType.DEFLECTOR]
+
     max_z = float("-inf")
     for obs in obstacles:
+        if obs.obstacle_type in exclude_types:
+            continue
         top_z = obs.z_max_mm + obs.clearance_mm + global_clearance_mm
         if top_z > max_z:
             max_z = top_z

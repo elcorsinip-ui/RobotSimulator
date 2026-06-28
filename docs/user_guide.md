@@ -42,9 +42,20 @@ Open browser at: http://localhost:8501
 - Approach height above obstacles [mm]
 - Entry X offset [mm]
 
-### Main Area — Obstacles
-Add obstacles by name, type, X/Z boundaries, clearance. Click "Load sample obstacles"
-for realistic defaults.
+### Main Area — Obstacles (3D)
+Add obstacles by name, type, X/Y/Z boundaries, clearance. 
+
+**Default obstacle:** A "deflector" obstacle is pre-loaded (type: DEFLECTOR, Z: 500-600mm, X: -50 to 50mm, Y: -50 to 50mm). Deflectors represent upper obstacles the robot passes UNDER — they do NOT condition the wait/approach Z height.
+
+**Actions per obstacle:**
+- ✏️ **Edit** — modify name, type, coordinates, clearance
+- 🗑️ **Remove** — delete obstacle from list
+- 🗑️ **Clear all** — remove all obstacles
+
+**Obstacle types:**
+- `DEFLECTOR` — upper obstacle, robot passes under (excluded from wait Z calc)
+- `MOULD_UPPER_EDGE` — mould top edge (conditions wait Z)
+- `BAFFLE_MECHANISM`, `FUNNEL_MECHANISM`, `MACHINE_FRAME`, `CUSTOM` — condition wait Z
 
 ## Output
 

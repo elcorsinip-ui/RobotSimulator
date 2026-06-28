@@ -5,6 +5,28 @@ All notable changes to **RobotSimulator** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-06-28
+
+### Added
+- **Obstacle type colors in 3D plots**: Each obstacle type now has distinct colors (DEFLECTOR=cyan, MOULD_UPPER_EDGE=brown, BAFFLE_MECHANISM=orange, FUNNEL_MECHANISM=purple, MACHINE_FRAME=grey, CUSTOM=red)
+- **Semi-transparent face fills**: 3D obstacles show filled faces for better volume perception in both matplotlib and Plotly
+- **Enhanced obstacle labels**: Labels now show both name and type (e.g., "deflector\n(DEFLECTOR)") with colored backgrounds
+
+### Changed
+- **Matplotlib 3D obstacles**: Type-based edge colors, face fills, and informative labels
+- **Plotly Interactive 3D obstacles**: Type-based Mesh3d face fills, edge colors, and HTML labels with type info
+
+## [0.3.2] - 2026-06-28
+
+### Added
+- **Obstacle edit/remove**: Each obstacle in the UI now has Edit (✏️) and Remove (🗑️) buttons
+- **Default deflector obstacle**: Pre-loaded "deflector" obstacle (type DEFLECTOR, Z: 500-600mm, X/Y: -50 to 50mm) representing upper machine deflectors the robot passes under
+- **DEFLECTOR exclusion logic**: Deflector-type obstacles are excluded from wait/approach Z height calculation (robot passes UNDER them)
+
+### Changed
+- **UI obstacle list**: Now shows expandable details with inline edit form
+- **Obstacle management**: "Clear all" button plus per-obstacle remove
+
 ## [0.3.1] - 2026-06-27
 
 ### Added

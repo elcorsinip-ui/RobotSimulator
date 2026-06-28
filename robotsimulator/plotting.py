@@ -5,6 +5,9 @@ Generates 3D plots showing mould, obstacles,
 and the calculated swabbing trajectory using matplotlib.
 
 Provides both 3D views and 2D projections (X-Z, X-Y, Y-Z).
+
+Version 0.3.3: Obstacle type-based colors (DEFLECTOR=cyan, MOULD=brown, etc.),
+semi-transparent face fills, enhanced labels with type info.
 """
 
 from __future__ import annotations
@@ -64,6 +67,46 @@ COLORS = {
     "exit_marker": "#E67E22",      # Orange
     "background": "#FFFFFF",
     "grid": "#E5E8E8",
+}
+
+# Obstacle type colors for better visual distinction
+OBSTACLE_TYPE_COLORS = {
+    ObstacleType.DEFLECTOR: {
+        "fill": "#00FFFF",      # Cyan
+        "edge": "#008080",      # Dark cyan/teal
+        "expanded": "#80FFFF",  # Light cyan
+    },
+    ObstacleType.MOULD_UPPER_EDGE: {
+        "fill": "#8B5A2B",      # Brown
+        "edge": "#5D3A1A",      # Dark brown
+        "expanded": "#C4A484",  # Light brown/tan
+    },
+    ObstacleType.BAFFLE_MECHANISM: {
+        "fill": "#FF8C00",      # Dark orange
+        "edge": "#CC6600",      # Darker orange
+        "expanded": "#FFB366",  # Light orange
+    },
+    ObstacleType.FUNNEL_MECHANISM: {
+        "fill": "#9B59B6",      # Purple
+        "edge": "#6C3483",      # Dark purple
+        "expanded": "#D2A6E8",  # Light purple
+    },
+    ObstacleType.MACHINE_FRAME: {
+        "fill": "#7F8C8D",      # Grey
+        "edge": "#5D6D7E",      # Dark grey
+        "expanded": "#BDC3C7",  # Light grey
+    },
+    ObstacleType.CUSTOM: {
+        "fill": "#E74C3C",      # Red (default)
+        "edge": "#922B21",      # Dark red
+        "expanded": "#F5B7B1",  # Light red
+    },
+}
+
+DEFAULT_OBSTACLE_COLORS = {
+    "fill": COLORS["obstacle_original"],
+    "edge": COLORS["obstacle_edge"],
+    "expanded": COLORS["obstacle_expanded"],
 }
 
 
@@ -213,6 +256,9 @@ def create_trajectory_plot_3d_interactive(
     
     # === Draw obstacles ===
     for obs in obstacles:
+        # Get colors for this obstacle type
+        type_colors = OBSTACLE_TYPE_COLORS.get(obs.obstacle_type, DEFAULT_OBSTACLE_COLORS)
+        
         # Expanded box
         x_exp = [
             obs.expanded_x_min_mm - global_clearance_mm,
@@ -227,7 +273,7 @@ def create_trajectory_plot_3d_interactive(
             obs.expanded_z_max_mm + global_clearance_mm,
         ]
         _add_box_edges_plotly(fig, x_exp, y_exp, z_exp,
-                              color=COLORS["obstacle_expanded"],
+                              color=type_colors["expanded"],
                               width=2, dash='dash', opacity=0.3,
                               name=f"{obs.name} (expanded)")
         
@@ -236,15 +282,19 @@ def create_trajectory_plot_3d_interactive(
         y_orig = [obs.y_min_mm, obs.y_max_mm]
         z_orig = [obs.z_min_mm, obs.z_max_mm]
         _add_box_edges_plotly(fig, x_orig, y_orig, z_orig,
-                              color=COLORS["obstacle_edge"],
+                              color=type_colors["edge"],
                               width=4, dash='solid', opacity=0.8,
                               name=f"{obs.name}")
         
-        # Label
+        # Fill faces for original box (semi-transparent)
+        _add_box_faces_plotly(fig, x_orig, y_orig, z_orig,
+                              color=type_colors["fill"], opacity=0.15)
+        
+        # Label with type info
         fig.add_trace(go.Scatter3d(
             x=[obs.center_x_mm], y=[obs.center_y_mm], z=[obs.center_z_mm],
-            mode='text', text=[obs.name],
-            textfont=dict(size=10, color='white', family='Arial Black'),
+            mode='text', text=[f"{obs.name}<br>({obs.obstacle_type.value})"],
+            textfont=dict(size=10, color=type_colors["edge"], family='Arial Black'),
             showlegend=False, hoverinfo="skip",
         ))
     
@@ -331,6 +381,45 @@ def create_trajectory_plot_3d_interactive(
     return fig
 
 
+def _add_box_faces_plotly(fig, x, y, z, color, opacity=0.2):
+    """Add 6 faces of a 3D box to a Plotly figure as Mesh3d for volume perception."""
+    x_min, x_max = x
+    y_min, y_max = y
+    z_min, z_max = z
+    
+    # 8 vertices of the box
+    vertices = [
+        [x_min, y_min, z_min],  # 0: bottom-front-left
+        [x_max, y_min, z_min],  # 1: bottom-front-right
+        [x_max, y_max, z_min],  # 2: bottom-back-right
+        [x_min, y_max, z_min],  # 3: bottom-back-left
+        [x_min, y_min, z_max],  # 4: top-front-left
+        [x_max, y_min, z_max],  # 5: top-front-right
+        [x_max, y_max, z_max],  # 6: top-back-right
+        [x_min, y_max, z_max],  # 7: top-back-left
+    ]
+    
+    # 12 triangles (2 per face)
+    i = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5,  # bottom, top
+         0, 0, 1, 1, 2, 2, 3, 3]  # sides
+    j = [1, 3, 2, 0, 3, 1, 0, 2, 5, 7, 6, 4,
+         4, 3, 5, 0, 6, 1, 7, 2]
+    k = [3, 1, 0, 2, 1, 3, 2, 0, 7, 5, 4, 6,
+         3, 4, 0, 5, 1, 6, 2, 7]
+    
+    xs = [v[0] for v in vertices]
+    ys = [v[1] for v in vertices]
+    zs = [v[2] for v in vertices]
+    
+    fig.add_trace(go.Mesh3d(
+        x=xs, y=ys, z=zs,
+        i=i, j=j, k=k,
+        color=color, opacity=opacity,
+        showscale=False, name="", hoverinfo="skip",
+        flatshading=True,
+    ))
+
+
 def _add_box_edges_plotly(fig, x, y, z, color, width=2, dash='solid', opacity=1.0, name=None):
     """Add 12 edges of a 3D box to a Plotly figure."""
     x_min, x_max = x
@@ -371,14 +460,18 @@ def _add_box_edges_plotly(fig, x, y, z, color, width=2, dash='solid', opacity=1.
 
 
 def _get_segment_marker_plotly(segment: SegmentType) -> str:
-    """Get Plotly marker symbol for a segment type."""
+    """Get Plotly marker symbol for a segment type.
+    
+    Note: Plotly 3D scatter only supports these symbols:
+    'circle', 'circle-open', 'cross', 'diamond', 'diamond-open', 'square', 'square-open', 'x'
+    """
     marker_map = {
         SegmentType.WAIT: 'square',
-        SegmentType.APPROACH: 'triangle-up',
-        SegmentType.ENTER: 'diamond',
+        SegmentType.APPROACH: 'diamond',
+        SegmentType.ENTER: 'diamond-open',
         SegmentType.SWAB_DOWN: 'circle',
-        SegmentType.SWAB_UP: 'circle',
-        SegmentType.EXIT: 'triangle-down',
+        SegmentType.SWAB_UP: 'circle-open',
+        SegmentType.EXIT: 'x',
     }
     return marker_map.get(segment, 'circle')
 
@@ -464,8 +557,11 @@ def _draw_mould_3d(ax, mould: MouldGeometry):
 
 
 def _draw_obstacles_3d(ax, obstacles: List[ObstacleEnvelope], global_clearance_mm: float):
-    """Draw obstacles as 3D boxes."""
+    """Draw obstacles as 3D boxes with type-based colors."""
     for i, obs in enumerate(obstacles):
+        # Get colors for this obstacle type
+        type_colors = OBSTACLE_TYPE_COLORS.get(obs.obstacle_type, DEFAULT_OBSTACLE_COLORS)
+        
         # Expanded box
         x = [obs.expanded_x_min_mm - global_clearance_mm,
              obs.expanded_x_max_mm + global_clearance_mm]
@@ -475,7 +571,7 @@ def _draw_obstacles_3d(ax, obstacles: List[ObstacleEnvelope], global_clearance_m
              obs.expanded_z_max_mm + global_clearance_mm]
 
         # Draw expanded edges
-        _draw_box_edges(ax, x, y, z, color=COLORS["obstacle_expanded"],
+        _draw_box_edges(ax, x, y, z, color=type_colors["expanded"],
                         linewidth=0.5, alpha=0.2, linestyle='--')
 
         # Original box
@@ -484,15 +580,70 @@ def _draw_obstacles_3d(ax, obstacles: List[ObstacleEnvelope], global_clearance_m
         z = [obs.z_min_mm, obs.z_max_mm]
 
         # Draw original edges
-        _draw_box_edges(ax, x, y, z, color=COLORS["obstacle_edge"],
-                        linewidth=1.5, alpha=0.6)
+        _draw_box_edges(ax, x, y, z, color=type_colors["edge"],
+                        linewidth=1.5, alpha=0.8)
 
-        # Label
+        # Fill faces for better visibility (semi-transparent)
+        _draw_box_faces(ax, x, y, z, color=type_colors["fill"], alpha=0.15)
+
+        # Label with type info
         cx = obs.center_x_mm
         cy = obs.center_y_mm
         cz = obs.center_z_mm
-        ax.text(cx, cy, cz, obs.name, fontsize=7, ha='center', va='center',
-                fontweight='bold', color='white')
+        label_text = f"{obs.name}\n({obs.obstacle_type.value})"
+        ax.text(cx, cy, cz, label_text, fontsize=8, ha='center', va='center',
+                fontweight='bold', color=type_colors["edge"],
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=type_colors["edge"], alpha=0.9))
+
+
+def _draw_box_faces(ax, x, y, z, color, alpha=0.2):
+    """Draw the 6 faces of a 3D box for better volume perception."""
+    x_min, x_max = x
+    y_min, y_max = y
+    z_min, z_max = z
+    
+    # Bottom face
+    ax.plot_surface(
+        np.array([[x_min, x_max], [x_min, x_max]]),
+        np.array([[y_min, y_min], [y_max, y_max]]),
+        np.array([[z_min, z_min], [z_min, z_min]]),
+        color=color, alpha=alpha, edgecolor='none'
+    )
+    # Top face
+    ax.plot_surface(
+        np.array([[x_min, x_max], [x_min, x_max]]),
+        np.array([[y_min, y_min], [y_max, y_max]]),
+        np.array([[z_max, z_max], [z_max, z_max]]),
+        color=color, alpha=alpha, edgecolor='none'
+    )
+    # Front face
+    ax.plot_surface(
+        np.array([[x_min, x_max], [x_min, x_max]]),
+        np.array([[y_min, y_min], [y_min, y_min]]),
+        np.array([[z_min, z_min], [z_max, z_max]]),
+        color=color, alpha=alpha, edgecolor='none'
+    )
+    # Back face
+    ax.plot_surface(
+        np.array([[x_min, x_max], [x_min, x_max]]),
+        np.array([[y_max, y_max], [y_max, y_max]]),
+        np.array([[z_min, z_min], [z_max, z_max]]),
+        color=color, alpha=alpha, edgecolor='none'
+    )
+    # Left face
+    ax.plot_surface(
+        np.array([[x_min, x_min], [x_min, x_min]]),
+        np.array([[y_min, y_max], [y_min, y_max]]),
+        np.array([[z_min, z_min], [z_max, z_max]]),
+        color=color, alpha=alpha, edgecolor='none'
+    )
+    # Right face
+    ax.plot_surface(
+        np.array([[x_max, x_max], [x_max, x_max]]),
+        np.array([[y_min, y_max], [y_min, y_max]]),
+        np.array([[z_min, z_min], [z_max, z_max]]),
+        color=color, alpha=alpha, edgecolor='none'
+    )
 
 
 def _draw_box_edges(ax, x, y, z, color, linewidth=1, alpha=1.0, linestyle='-'):

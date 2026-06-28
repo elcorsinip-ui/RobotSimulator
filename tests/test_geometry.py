@@ -279,11 +279,23 @@ class TestHighestObstacleZ:
 
     def test_with_obstacles(self, deflector, baffle):
         z = find_highest_obstacle_z([deflector, baffle])
+        # deflector is excluded by default, only baffle counts: 260 + 5 = 265
         assert z == 265.0
 
-    def test_with_global_clearance(self, deflector):
-        z = find_highest_obstacle_z([deflector], global_clearance_mm=10.0)
-        assert z == 255.0
+    def test_with_global_clearance(self, baffle):
+        z = find_highest_obstacle_z([baffle], global_clearance_mm=10.0)
+        # baffle: 260 + 5 + 10 = 275
+        assert z == 275.0
+
+    def test_deflector_excluded_by_default(self, deflector):
+        # Deflector should be excluded by default
+        z = find_highest_obstacle_z([deflector])
+        assert z == 0.0
+
+    def test_deflector_included_when_not_excluded(self, deflector):
+        # But can be included if explicitly requested
+        z = find_highest_obstacle_z([deflector], exclude_types=[])
+        assert z == 245.0  # 240 + 5
 
 
 class TestSafeCorridor3D:
