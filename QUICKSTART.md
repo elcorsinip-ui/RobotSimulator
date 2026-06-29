@@ -44,14 +44,14 @@ Quando lanci `streamlit run app.py`, l'interfaccia mostrerà:
 
 1. **Header** con:
    - Nome: "RobotSimulator"
-   - Versione: v0.2.0 — 2026-06-26
+   - Versione: v0.3.3 — 2026-06-28
    - License: Proprietary — Bottero Group S.p.A.
 
 2. **Disclaimer di sicurezza** (in un expander "⚠️ SAFETY DISCLAIMER — Read before use")
    - Clicca per espandere e leggere tutti gli avvertimenti legali
 
 3. **Sidebar** con:
-   - Versione in basso: "v0.2.0 | 2026-06-26"
+   - Versione in basso: "v0.3.3 | 2026-06-28"
    - INPUT参数 (mould, lance, robot, swabbing)
 
 4. **Area principale** con:
@@ -65,7 +65,7 @@ Quando lanci `streamlit run app.py`, l'interfaccia mostrerà:
 
 ```
 RobotSimulator/
-├── VERSION                    # File di versione (0.2.0)
+├── VERSION                    # File di versione (0.3.3)
 ├── LICENSE                    # Licenza proprietaria Bottero
 ├── CHANGELOG.md               # Storico versioni
 ├── README.md                  # Documentazione con badge GitHub
@@ -82,8 +82,8 @@ RobotSimulator/
 │   ├── velocity.py            # Modulazione velocità
 │   ├── valve_timing.py        # Timing valvola
 │   ├── export.py              # Export CSV/JSON/MD
-│   └── plotting.py            # Plot matplotlib
-├── tests/                     # Test unitari (59 test)
+│   └── plotting.py            # Plot matplotlib + Plotly
+├── tests/                     # Test unitari (68 test)
 ├── data/                      # Dati di esempio
 ├── docs/                      # Documentazione
 │   ├── architecture.md
@@ -113,10 +113,10 @@ Prima di chiudere, verifica che tutto funzioni:
 ```bash
 cd /root/RobotSimulator
 python3 -c "from robotsimulator import VERSION; print(f'Versione: {VERSION}')"
-# Output: Versione: 0.2.0
+# Output: Versione: 0.3.3
 
 pytest tests/ -v --tb=short
-# Output: 59 passed
+# Output: 68 passed
 ```
 
 ---

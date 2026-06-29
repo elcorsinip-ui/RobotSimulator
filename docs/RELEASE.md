@@ -24,7 +24,7 @@ echo "0.3.0" > VERSION
 ```bash
 cd /root/RobotSimulator
 pytest tests/ -v
-# Expected: 59 tests passing
+# Expected: 68 tests passing
 ```
 
 ### 5. Verify Import and Version Display

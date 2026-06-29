@@ -3,8 +3,9 @@ RobotSimulator — Streamlit Web Application (3D)
 FANUC Robot Swabbing Trajectory Calculator for IS Machine — 3D Version
 Run with: streamlit run app.py
 
-Version 0.3.2: Added obstacle edit/remove, default deflector obstacle,
-DEFLECTOR type excluded from wait Z calculation (robot passes under).
+Version 0.3.3: Obstacle type colors in 3D (DEFLECTOR=cyan, MOULD=brown, etc.),
+semi-transparent face fills, enhanced labels with type info.
+Obstacle edit/remove UI, default deflector obstacle, DEFLECTOR excluded from wait Z.
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

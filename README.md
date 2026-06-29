@@ -1,13 +1,13 @@
 # RobotSimulator
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/BotteroGroup/RobotSimulator/releases)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-59%20passed-green)](https://github.com/BotteroGroup/RobotSimulator/actions)
+[![Version](https://img.shields.io/badge/version-0.3.3-blue)](https://github.com/elcorsinip-ui/RobotSimulator/releases)
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![Tests](https://img.shields.io/badge/tests-68%20passed-green)](https://github.com/elcorsinip-ui/RobotSimulator/actions)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 
 ## FANUC Robot Swabbing Trajectory Calculator for IS Hollow Glass Forming Machine — Blank Side
 
-**Version:** v0.2.0 (build 2026-06-26)  
+**Version:** v0.3.3 (build 2026-06-28)  
 **Status:** Engineering Tool — Not for Production Use  
 **License:** Proprietary — Bottero Group S.p.A.
 
