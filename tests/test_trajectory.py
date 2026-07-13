@@ -74,6 +74,8 @@ def obstacles():
             obstacle_type=ObstacleType.DEFLECTOR,
             x_min_mm=-80.0,
             x_max_mm=80.0,
+            y_min_mm=-50.0,
+            y_max_mm=50.0,
             z_min_mm=210.0,
             z_max_mm=240.0,
             clearance_mm=5.0,
