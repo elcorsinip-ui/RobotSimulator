@@ -2,7 +2,7 @@
 
 [![Version](https://img.shields.io/badge/version-0.3.3-blue)](https://github.com/elcorsinip-ui/RobotSimulator/releases)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-68%20passed-green)](https://github.com/elcorsinip-ui/RobotSimulator/actions)
+[![Tests](https://img.shields.io/badge/tests-74%20passed-green)](https://github.com/elcorsinip-ui/RobotSimulator/actions)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 
 ## FANUC Robot Swabbing Trajectory Calculator for IS Hollow Glass Forming Machine — Blank Side
