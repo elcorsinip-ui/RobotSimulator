@@ -64,6 +64,20 @@ Add obstacles by name, type, X/Y/Z boundaries, clearance.
 - Feasibility indicator
 - CSV / JSON / Markdown export buttons
 
+
+## STL Obstacle Import
+
+You can import obstacles from STL files via the sidebar:
+
+1. Click "📤 Import from STL" in the sidebar.
+2. Upload an STL file (binary or ASCII).
+3. Set the obstacle name, type, clearance, and reference point (the point where the minimum corner of the STL's bounding box will be placed).
+4. Press "Load STL as Obstacle".
+
+The STL's bounding box is used for collision calculations and for determining the obstacle's influence on wait/approach heights. The actual mesh is rendered in the 3D view (if interactive 3D is enabled) for better visualization.
+
+Note: The obstacle's collision shape remains an axis-aligned bounding box (this will be refined in a future update).
+
 ## Safety Warnings
 
 Trajectory must be validated by real dry-run at low speed before use on production.

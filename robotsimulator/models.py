@@ -12,6 +12,7 @@ Coordinate System (3D):
 """
 
 from __future__ import annotations
+import os
 
 import math
 from dataclasses import dataclass, field
@@ -161,6 +162,7 @@ class ObstacleEnvelope:
     z_max_mm: float
     clearance_mm: float = 0.0
 
+    stl_path: Optional[str] = None
     def __post_init__(self):
         if not self.name or not self.name.strip():
             raise ValueError("Obstacle name must not be empty")
@@ -189,6 +191,11 @@ class ObstacleEnvelope:
         if self.clearance_mm < 0:
             raise ValueError(f"clearance_mm must be >= 0, got {self.clearance_mm}")
 
+        if self.stl_path is not None:
+            if not isinstance(self.stl_path, str):
+                raise ValueError(f"stl_path must be a string, got {type(self.stl_path)}")
+            if not os.path.exists(self.stl_path):
+                raise FileNotFoundError(f"STL file not found: {self.stl_path}")
     @property
     def expanded_x_min_mm(self) -> float:
         """Left boundary including clearance."""
@@ -249,6 +256,71 @@ class ObstacleEnvelope:
         return self.width_mm * self.depth_mm * self.height_mm
 
 
+    @classmethod
+    def from_stl(cls, filepath: str, name: str, obstacle_type: ObstacleType, clearance_mm: float, reference_point: tuple[float, float, float] = (0.0, 0.0, 0.0)) -> "ObstacleEnvelope":
+        """
+        Create an ObstacleEnvelope from an STL file by placing its axis-aligned bounding box
+        such that the minimum corner of the bounding box is at the reference_point.
+        
+        Parameters
+        ----------
+        filepath : str
+            Path to the STL file.
+        name : str
+            Name of the obstacle.
+        obstacle_type : ObstacleType
+            Type of the obstacle.
+        clearance_mm : float
+            Local clearance for the obstacle.
+        reference_point : tuple of float, optional
+            The (x, y, z) coordinate where the minimum corner of the bounding box should be placed.
+            Default is (0, 0, 0).
+        
+        Returns
+        -------
+        ObstacleEnvelope
+        """
+        try:
+            from stl import mesh
+        except ImportError:
+            raise ImportError("The numpy-stl package is required to load STL files. Install it with: pip install numpy-stl")
+        
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"STL file not found: {filepath}")
+        
+        # Load the STL mesh
+        stl_mesh = mesh.Mesh.from_file(filepath)
+        
+        # Get the axis-aligned bounding box
+        points = stl_mesh.points.reshape(-1, 3)
+        min_x, min_y, min_z = points.min(axis=0)
+        max_x, max_y, max_z = points.max(axis=0)
+        
+        # Compute offset to move the min point to the reference point
+        offset_x = reference_point[0] - min_x
+        offset_y = reference_point[1] - min_y
+        offset_z = reference_point[2] - min_z
+        
+        # Apply offset to get the positioned bounding box
+        x_min = min_x + offset_x
+        x_max = max_x + offset_x
+        y_min = min_y + offset_y
+        y_max = max_y + offset_y
+        z_min = min_z + offset_z
+        z_max = max_z + offset_z
+        
+        return cls(
+            name=name,
+            obstacle_type=obstacle_type,
+            x_min_mm=x_min,
+            x_max_mm=x_max,
+            y_min_mm=y_min,
+            y_max_mm=y_max,
+            z_min_mm=z_min,
+            z_max_mm=z_max,
+            clearance_mm=clearance_mm,
+            stl_path=filepath
+        )
 # ============================================================================
 # Robot Parameters
 # ============================================================================

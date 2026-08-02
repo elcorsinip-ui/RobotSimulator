@@ -120,6 +120,39 @@ if add_obs and obs_name.strip():
         st.success("Added!")
     except ValueError as e: st.error(str(e))
 
+st.subheader("📦 Import from STL")
+stl_file = st.file_uploader("Upload STL file", type=["stl"])
+if stl_file is not None:
+    # Save the uploaded file to a temporary location
+    upload_dir = os.path.join("data", "uploaded_stl")
+    os.makedirs(upload_dir, exist_ok=True)
+    stl_path = os.path.join(upload_dir, stl_file.name)
+    with open(stl_path, "wb") as f:
+        f.write(stl_file.getbuffer())
+    # Input parameters for the obstacle
+    stl_name = st.text_input("Obstacle name", value=os.path.splitext(stl_file.name)[0])
+    stl_type = st.selectbox("Obstacle type", [t.value for t in ObstacleType], key="stl_type")
+    stl_clearance = st.number_input("Clearance [mm]", 0.0, value=5.0, step=1.0, key="stl_clearance")
+    stl_col1, stl_col2, stl_col3 = st.columns(3)
+    with stl_col1:
+        stl_ref_x = st.number_input("Reference X [mm]", value=0.0, step=5.0, key="stl_ref_x")
+    with stl_col2:
+        stl_ref_y = st.number_input("Reference Y [mm]", value=0.0, step=5.0, key="stl_ref_y")
+    with stl_col3:
+        stl_ref_z = st.number_input("Reference Z [mm]", value=0.0, step=5.0, key="stl_ref_z")
+    if st.button("Load STL as Obstacle", key="load_stl"):
+        try:
+            obstacle = ObstacleEnvelope.from_stl(
+                filepath=stl_path,
+                name=stl_name.strip(),
+                obstacle_type=ObstacleType(stl_type),
+                clearance_mm=stl_clearance,
+                reference_point=(stl_ref_x, stl_ref_y, stl_ref_z)
+            )
+            st.session_state.obstacles.append(obstacle)
+            st.success("STL loaded as obstacle!")
+        except Exception as e:
+            st.error(f"Failed to load STL: {e}")
 if st.button("🗑️ Clear all"): st.session_state.obstacles = []
 if st.session_state.obstacles:
     for i, obs in enumerate(st.session_state.obstacles):

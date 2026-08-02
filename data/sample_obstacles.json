@@ -62,6 +62,18 @@
       "x_min_mm": 250.0,
       "z_max_mm": 400.0,
       "z_min_mm": 0.0
+    },
+    {
+      "name": "sample_stl_obstacle",
+      "obstacle_type": "custom",
+      "x_min_mm": 0.0,
+      "x_max_mm": 50.0,
+      "y_min_mm": 0.0,
+      "y_max_mm": 50.0,
+      "z_min_mm": 100.0,
+      "z_max_mm": 150.0,
+      "clearance_mm": 5.0,
+      "stl_path": "data/sample_cube.stl"
     }
   ]
 }

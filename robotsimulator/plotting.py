@@ -23,6 +23,7 @@ from matplotlib.cm import ScalarMappable
 import mpl_toolkits.mplot3d.art3d as art3d
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.figure import Figure
+import os
 
 # Plotly for interactive 3D
 try:
@@ -297,6 +298,42 @@ def create_trajectory_plot_3d_interactive(
             textfont=dict(size=10, color=type_colors["edge"], family='Arial Black'),
             showlegend=False, hoverinfo="skip",
         ))
+
+        # --- STL Mesh Rendering ---
+        if obs.stl_path is not None and os.path.exists(obs.stl_path):
+            try:
+                from stl import mesh
+                stl_mesh = mesh.Mesh.from_file(obs.stl_path)
+                points = stl_mesh.points.reshape(-1, 3)
+                min_x, min_y, min_z = points.min(axis=0)
+                # The offset applied in from_stl was: offset = (reference_point - min_point)
+                # And we set the bounding box to: min_point + offset = reference_point
+                # So the offset is: (obs.x_min_mm - min_x, obs.y_min_mm - min_y, obs.z_min_mm - min_z)
+                offset_x = obs.x_min_mm - min_x
+                offset_y = obs.y_min_mm - min_y
+                offset_z = obs.z_min_mm - min_z
+                # Apply offset to the vertices
+                xs = points[:, 0] + offset_x
+                ys = points[:, 1] + offset_y
+                zs = points[:, 2] + offset_z
+                # Create indices for triangles (each triangle is three consecutive points)
+                n_triangles = len(xs) // 3
+                i = list(range(0, len(xs), 3))
+                j = [idx+1 for idx in i]
+                k = [idx+2 for idx in i]
+                fig.add_trace(go.Mesh3d(
+                    x=xs, y=ys, z=zs,
+                    i=i, j=j, k=k,
+                    color=type_colors["fill"],
+                    opacity=0.5,
+                    name=f"{obs.name} (STL)",
+                    showlegend=False,
+                    hoverinfo="skip",
+                ))
+            except Exception as e:
+                # If there's an error loading the STL, we can skip or show a warning
+                # For now, we just skip and maybe log
+                print(f"Warning: Could not load STL mesh for {obs.name}: {e}")
     
     # === Draw trajectory ===
     if result.points:
