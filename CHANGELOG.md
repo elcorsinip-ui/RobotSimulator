@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.3] - 2026-06-28
 
+### Fixed
+- **Missing STL test fixture**: Added `data/sample_cube.stl`, a valid 10×10×10 mm ASCII STL model (min corner 0,0,0 / max 10,10,10) required by `ObstacleEnvelope.from_stl()` tests
+
+
 ### Added
 - **Obstacle type colors in 3D plots**: Each obstacle type now has distinct colors (DEFLECTOR=cyan, MOULD_UPPER_EDGE=brown, BAFFLE_MECHANISM=orange, FUNNEL_MECHANISM=purple, MACHINE_FRAME=grey, CUSTOM=red)
 - **Semi-transparent face fills**: 3D obstacles show filled faces for better volume perception in both matplotlib and Plotly
